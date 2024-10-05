@@ -164,7 +164,7 @@ export function WatchListComponent() {
 
   const fetchAnimeList = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/anime');
+      const response = await axios.get('http://192.168.1.210:5000/api/anime');
       const updatedAnimeList = response.data.map((anime: Anime) => ({
         ...anime,
         currentEpisode: calculateCurrentEpisode(anime)
@@ -183,7 +183,7 @@ export function WatchListComponent() {
 
   const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/anime', newAnime);
+      const response = await axios.post('http://192.168.1.210:5000/api/anime', newAnime);
       setAnimeList(prevList => [...prevList, response.data]);
     } catch (error) {
       console.error('Error adding anime', error);
@@ -192,7 +192,7 @@ export function WatchListComponent() {
 
   const handleEditAnime = async (editedAnime: Anime) => {
     try {
-      const response = await axios.put(`http://localhost:5000/api/anime/${editedAnime.id}`, editedAnime);
+      const response = await axios.put(`http://192.168.1.210:5000/api/anime/${editedAnime.id}`, editedAnime);
       setAnimeList(prevList => prevList.map(anime => anime.id === editedAnime.id ? response.data : anime));
       setAnimeToEdit(null);
     } catch (error) {
@@ -202,7 +202,7 @@ export function WatchListComponent() {
 
   const handleDeleteAnime = async (id: number) => {
     try {
-      await axios.delete(`http://localhost:5000/api/anime/${id}`);
+      await axios.delete(`http://192.168.1.210:5000/api/anime/${id}`);
       setAnimeList(prevList => prevList.filter(anime => anime.id !== id));
     } catch (error) {
       console.error('Error deleting anime', error);
