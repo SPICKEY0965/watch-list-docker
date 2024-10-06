@@ -27,7 +27,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
         broadcastDate: '',
         updateDay: '',
         streamingUrl: '',
-        status: 'Plan to watch',
+        status: 'Watching',
         genres: []
     })
 
@@ -45,7 +45,6 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
             } else {
                 await onAddAnime(anime);
             }
-            // フォームをリセット
             setAnime({
                 title: '',
                 type: '',
@@ -59,7 +58,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                 broadcastDate: '',
                 updateDay: '',
                 streamingUrl: '',
-                status: 'Plan to watch',
+                status: 'Watching',
                 genres: []
             });
         } catch (error) {
