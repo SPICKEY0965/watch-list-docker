@@ -63,7 +63,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
             });
         } catch (error) {
             console.error('Error saving anime:', error);
-            alert('アニメの保存中にエラーが発生しました。再試行してください。');
+            alert('コンテンツの保存中にエラーが発生しました。再試行してください。');
         }
     };
 

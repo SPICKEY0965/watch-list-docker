@@ -58,7 +58,7 @@ db.run(`
     )
 `);
 
-// アニメリストの取得
+// コンテンツリストの取得
 app.get('/api/anime', (req, res) => {
     db.all('SELECT * FROM anime', [], (err, rows) => {
         if (err) {
@@ -76,7 +76,7 @@ app.get('/api/anime', (req, res) => {
     });
 });
 
-// アニメの追加
+// コンテンツの追加
 app.post('/api/anime', (req, res) => {
     const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
     const formattedGenres = JSON.stringify(genres);
@@ -95,7 +95,7 @@ app.post('/api/anime', (req, res) => {
     });
 });
 
-// アニメの更新
+// コンテンツの更新
 app.put('/api/anime/:id', (req, res) => {
     const { id } = req.params;
     const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
@@ -116,7 +116,7 @@ app.put('/api/anime/:id', (req, res) => {
     });
 });
 
-// アニメの削除
+// コンテンツの削除
 app.delete('/api/anime/:id', (req, res) => {
     const { id } = req.params;
     db.run('DELETE FROM anime WHERE id = ?', [id], function (err) {
