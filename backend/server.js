@@ -79,6 +79,12 @@ app.get('/api/anime', (req, res) => {
 // コンテンツの追加
 app.post('/api/anime', (req, res) => {
     const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+
+    // タイトルが空でないかを確認
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ error: 'タイトルは必須です。' });
+    }
+
     const formattedGenres = JSON.stringify(genres);
 
     const query = `
@@ -99,6 +105,12 @@ app.post('/api/anime', (req, res) => {
 app.put('/api/anime/:id', (req, res) => {
     const { id } = req.params;
     const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+
+    // タイトルが空でないかを確認
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ error: 'タイトルは必須です。' });
+    }
+
     const updatedAnime = { title, genres: JSON.stringify(genres), type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating };
 
     const query = `
@@ -115,6 +127,7 @@ app.put('/api/anime/:id', (req, res) => {
         res.json(responseAnime);
     });
 });
+
 
 // コンテンツの削除
 app.delete('/api/anime/:id', (req, res) => {
