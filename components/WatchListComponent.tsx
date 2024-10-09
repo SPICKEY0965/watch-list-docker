@@ -20,9 +20,8 @@ export function WatchListComponent() {
     const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null)
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
 
-    const handleSort = (criteria: string) => {
-        setSortBy(criteria);
-        let sortedList = [...animeList];
+    const sortAnimeList = (list: Anime[], criteria: string): Anime[] => {
+        let sortedList = [...list];
         switch (criteria) {
             case 'Recently Updated':
                 sortedList.sort((a, b) => {
@@ -30,7 +29,6 @@ export function WatchListComponent() {
                     const lastUpdateA = getLastUpdateDate(a);
                     const lastUpdateB = getLastUpdateDate(b);
 
-                    // まず、放送開始日が未来のものを後ろにソート
                     if (isAfter(parseISO(a.broadcastDate), now) && !isAfter(parseISO(b.broadcastDate), now)) {
                         return 1;
                     }
@@ -38,7 +36,6 @@ export function WatchListComponent() {
                         return -1;
                     }
 
-                    // 両方とも放送済みか両方とも未放送の場合は、最終更新日で比較
                     return lastUpdateB.getTime() - lastUpdateA.getTime();
                 });
                 break;
@@ -53,7 +50,12 @@ export function WatchListComponent() {
                 sortedList.sort((a, b) => ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating));
                 break;
         }
-        setAnimeList(sortedList);
+        return sortedList;
+    };
+
+    const handleSort = (criteria: string) => {
+        setSortBy(criteria);
+        setAnimeList(prevList => sortAnimeList(prevList, criteria));
     };
 
     const fetchAnimeList = async () => {
@@ -63,7 +65,7 @@ export function WatchListComponent() {
                 ...anime,
                 currentEpisode: calculateCurrentEpisode(anime)
             }));
-            setAnimeList(updatedAnimeList);
+            setAnimeList(sortAnimeList(updatedAnimeList, sortBy));
         } catch (error) {
             console.error('Error fetching anime list', error);
         }
@@ -71,9 +73,11 @@ export function WatchListComponent() {
 
     useEffect(() => {
         fetchAnimeList();
-        //const interval = setInterval(() => handleSort(sortBy), 60000);
-        //return () => clearInterval(interval);
-    });
+        const interval = setInterval(() => {
+            setAnimeList(prevList => sortAnimeList(prevList, sortBy));
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [sortBy]);
 
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
