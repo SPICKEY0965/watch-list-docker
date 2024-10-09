@@ -29,7 +29,7 @@
     **注意**: アクションは**root**権限で実行する必要があります。
 
     ```bach
-    docker compose up -d
+    docker compose up -d --build
     ```
 
 ## 使用方法
