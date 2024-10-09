@@ -71,9 +71,10 @@ export function WatchListComponent() {
 
     useEffect(() => {
         fetchAnimeList();
-        //const interval = setInterval(fetchAnimeList, 60000); // Update every minute
-        //return () => clearInterval(interval);
-    }, [])
+        const interval = setInterval(() => handleSort(sortBy), 60000);
+        return () => clearInterval(interval);
+    }, [sortBy]);
+
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
         try {

@@ -164,6 +164,18 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="image" className="text-right">
+                            Image URL
+                        </Label>
+                        <Input
+                            id="image"
+                            type="url"
+                            value={anime.image}
+                            onChange={(e) => setAnime({ ...anime, image: e.target.value })}
+                            className="col-span-3"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">
                             Status
                         </Label>
@@ -192,18 +204,6 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                                 ))}
                             </SelectContent>
                         </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="image" className="text-right">
-                            Image URL
-                        </Label>
-                        <Input
-                            id="image"
-                            type="url"
-                            value={anime.image}
-                            onChange={(e) => setAnime({ ...anime, image: e.target.value })}
-                            className="col-span-3"
-                        />
                     </div>
                     <Button type="submit">{animeToEdit ? 'Update Anime' : 'Add Anime'}</Button>
                 </form>
