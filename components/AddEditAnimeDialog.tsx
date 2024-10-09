@@ -18,7 +18,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
         title: '',
         type: '',
         duration: '',
-        episodes: 0,
+        episodes: 12,
         currentEpisode: 0,
         image: '',
         rating: null,
@@ -49,7 +49,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                 title: '',
                 type: '',
                 duration: '',
-                episodes: 0,
+                episodes: 12,
                 currentEpisode: 0,
                 image: '',
                 rating: null,
@@ -73,37 +73,38 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                 {animeToEdit ? (
                     <Button variant="outline" className="h-full w-full flex flex-col items-center justify-center bg-gray-800 text-white hover:bg-gray-700">
                         <Plus className="h-6 w-6 mb-2" />
-                        Edit Anime
+                        編集
                     </Button>
                 ) : (
                     <Button variant="outline" className="h-full w-full flex flex-col items-center justify-center bg-gray-800 text-white hover:bg-gray-700">
                         <Plus className="h-6 w-6 mb-2" />
-                        Add Anime
+                        追加
                     </Button>
                 )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{animeToEdit ? 'Edit Anime' : 'Add New Anime'}</DialogTitle>
+                    <DialogTitle>{animeToEdit ? '編集' : '追加'}</DialogTitle>
                     <DialogDescription>
-                        Enter the details of the anime you want to {animeToEdit ? 'edit' : 'add'} to your watch list.
+                        ウォッチリストに{animeToEdit ? '編集' : '追加'}したいコンテンツの詳細を入力してください。
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="title" className="text-right">
-                            Title
+                            タイトル
                         </Label>
                         <Input
                             id="title"
                             value={anime.title}
                             onChange={(e) => setAnime({ ...anime, title: e.target.value })}
                             className="col-span-3"
+                            placeholder="必須"
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="type" className="text-right">
-                            Type
+                            ジャンル
                         </Label>
                         <Input
                             id="type"
@@ -114,7 +115,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="episodes" className="text-right">
-                            Episodes
+                            話数
                         </Label>
                         <Input
                             id="episodes"
@@ -126,7 +127,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="broadcastDate" className="text-right">
-                            Broadcast Date
+                            放送日
                         </Label>
                         <Input
                             id="broadcastDate"
@@ -138,22 +139,30 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="updateDay" className="text-right">
-                            Update Day
+                            更新日
                         </Label>
                         <Select value={anime.updateDay} onValueChange={(value) => setAnime({ ...anime, updateDay: value })}>
                             <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select day" />
+                                <SelectValue placeholder="曜日を選択" />
                             </SelectTrigger>
                             <SelectContent>
-                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                                {[
+                                    ['Monday', '月曜日'],
+                                    ['Tuesday', '火曜日'],
+                                    ['Wednesday', '水曜日'],
+                                    ['Thursday', '木曜日'],
+                                    ['Friday', '金曜日'],
+                                    ['Saturday', '土曜日'],
+                                    ['Sunday', '日曜日']
+                                ].map(([value, label]) => (
+                                    <SelectItem key={value} value={value}>{label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="streamingUrl" className="text-right">
-                            Streaming URL
+                            動画URL
                         </Label>
                         <Input
                             id="streamingUrl"
@@ -165,7 +174,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="image" className="text-right">
-                            Image URL
+                            画像URL
                         </Label>
                         <Input
                             id="image"
@@ -177,26 +186,32 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="status" className="text-right">
-                            Status
+                            ステータス
                         </Label>
                         <Select value={anime.status} onValueChange={(value: AnimeStatus) => setAnime({ ...anime, status: value })}>
                             <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select status" />
+                                <SelectValue placeholder="ステータスを選択" />
                             </SelectTrigger>
                             <SelectContent>
-                                {['Watching', 'On-hold', 'Plan to watch', 'Dropped', 'Completed'].map((status) => (
-                                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                                {[
+                                    ['Watching', '視聴中'],
+                                    ['On-hold', '保留中'],
+                                    ['Plan to watch', '視聴予定'],
+                                    ['Dropped', '視聴中止'],
+                                    ['Completed', '視聴完了']
+                                ].map(([value, label]) => (
+                                    <SelectItem key={value} value={value}>{label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="rating" className="text-right">
-                            Rating
+                            評価
                         </Label>
                         <Select value={anime.rating || ''} onValueChange={(value) => setAnime({ ...anime, rating: value as AnimeRating })}>
                             <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Select rating" />
+                                <SelectValue placeholder="評価を選択" />
                             </SelectTrigger>
                             <SelectContent>
                                 {['SS', 'S', 'A', 'B', 'C'].map((rating) => (
@@ -205,7 +220,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button type="submit">{animeToEdit ? 'Update Anime' : 'Add Anime'}</Button>
+                    <Button type="submit">{animeToEdit ? 'アニメを更新' : 'アニメを追加'}</Button>
                 </form>
             </DialogContent>
         </Dialog>
