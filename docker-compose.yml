@@ -7,6 +7,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+    restart: always
 
   backend:
     build:
@@ -17,6 +18,4 @@ services:
       - NODE_ENV=production
     volumes:
       - ./backend:/usr/src/app
-
-networks:
-  watch_list_net:
+    restart: always
