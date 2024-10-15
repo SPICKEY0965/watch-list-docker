@@ -20,9 +20,8 @@ export function WatchListComponent() {
     const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null)
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
 
-    const handleSort = (criteria: string) => {
-        setSortBy(criteria);
-        let sortedList = [...animeList];
+    const sortAnimeList = (list: Anime[], criteria: string): Anime[] => {
+        let sortedList = [...list];
         switch (criteria) {
             case 'Recently Updated':
                 sortedList.sort((a, b) => {
@@ -30,7 +29,6 @@ export function WatchListComponent() {
                     const lastUpdateA = getLastUpdateDate(a);
                     const lastUpdateB = getLastUpdateDate(b);
 
-                    // まず、放送開始日が未来のものを後ろにソート
                     if (isAfter(parseISO(a.broadcastDate), now) && !isAfter(parseISO(b.broadcastDate), now)) {
                         return 1;
                     }
@@ -38,7 +36,6 @@ export function WatchListComponent() {
                         return -1;
                     }
 
-                    // 両方とも放送済みか両方とも未放送の場合は、最終更新日で比較
                     return lastUpdateB.getTime() - lastUpdateA.getTime();
                 });
                 break;
@@ -53,7 +50,12 @@ export function WatchListComponent() {
                 sortedList.sort((a, b) => ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating));
                 break;
         }
-        setAnimeList(sortedList);
+        return sortedList;
+    };
+
+    const handleSort = (criteria: string) => {
+        setSortBy(criteria);
+        setAnimeList(prevList => sortAnimeList(prevList, criteria));
     };
 
     const fetchAnimeList = async () => {
@@ -63,7 +65,7 @@ export function WatchListComponent() {
                 ...anime,
                 currentEpisode: calculateCurrentEpisode(anime)
             }));
-            setAnimeList(updatedAnimeList);
+            setAnimeList(sortAnimeList(updatedAnimeList, sortBy));
         } catch (error) {
             console.error('Error fetching anime list', error);
         }
@@ -71,7 +73,9 @@ export function WatchListComponent() {
 
     useEffect(() => {
         fetchAnimeList();
-        const interval = setInterval(() => handleSort(sortBy), 60000);
+        const interval = setInterval(() => {
+            setAnimeList(prevList => sortAnimeList(prevList, sortBy));
+        }, 60000);
         return () => clearInterval(interval);
     }, [sortBy]);
 
@@ -143,14 +147,21 @@ export function WatchListComponent() {
                         <div>
                             <h3 className="mb-2 text-sm font-medium">ステータス</h3>
                             <div className="grid grid-cols-2 gap-2">
-                                {['All', 'Watching', 'On-hold', 'Plan to watch', 'Dropped', 'Completed'].map((tab) => (
+                                {[
+                                    ['All', 'すべて'],
+                                    ['Watching', '視聴中'],
+                                    ['On-hold', '保留中'],
+                                    ['Plan to watch', '視聴予定'],
+                                    ['Dropped', '視聴中止'],
+                                    ['Completed', '視聴完了']
+                                ].map(([value, label]) => (
                                     <Button
-                                        key={tab}
-                                        variant={activeTab === tab ? "secondary" : "outline"}
+                                        key={value}
+                                        variant={activeTab === value ? "secondary" : "outline"}
                                         size="sm"
-                                        onClick={() => setActiveTab(tab as AnimeStatus | 'All')}
+                                        onClick={() => setActiveTab(value as AnimeStatus | 'All')}
                                     >
-                                        {tab}
+                                        {label}
                                     </Button>
                                 ))}
                             </div>
@@ -165,21 +176,21 @@ export function WatchListComponent() {
                                         size="sm"
                                         onClick={() => setActiveRating(rating as AnimeRating | 'All')}
                                     >
-                                        {rating}
+                                        {rating === 'All' ? 'すべて' : rating}
                                     </Button>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <h3 className="mb-2 text-sm font-medium">ソート</h3>
+                            <h3 className="mb-2 text-sm font-medium">並び替え</h3>
                             <Select value={sortBy} onValueChange={handleSort}>
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Sort by" />
+                                    <SelectValue placeholder="並び替え" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Recently Updated">更新日順</SelectItem>
                                     <SelectItem value="Name A-Z">タイトル順</SelectItem>
-                                    <SelectItem value="Released Date">オンエア順</SelectItem>
+                                    <SelectItem value="Released Date">放送日順</SelectItem>
                                     <SelectItem value="Rating">評価順</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -189,25 +200,32 @@ export function WatchListComponent() {
 
                 <div className="hidden md:flex justify-between items-center mb-6">
                     <div className="flex gap-2 md:gap-4 flex-wrap">
-                        {['All', 'Watching', 'On-hold', 'Plan to watch', 'Dropped', 'Completed'].map((tab) => (
+                        {[
+                            ['All', 'すべて'],
+                            ['Watching', '視聴中'],
+                            ['On-hold', '保留中'],
+                            ['Plan to watch', '視聴予定'],
+                            ['Dropped', '視聴中止'],
+                            ['Completed', '視聴完了']
+                        ].map(([value, label]) => (
                             <Button
-                                key={tab}
-                                variant={activeTab === tab ? "secondary" : "ghost"}
+                                key={value}
+                                variant={activeTab === value ? "secondary" : "ghost"}
                                 size="sm"
-                                onClick={() => setActiveTab(tab as AnimeStatus | 'All')}
+                                onClick={() => setActiveTab(value as AnimeStatus | 'All')}
                             >
-                                {tab}
+                                {label}
                             </Button>
                         ))}
                     </div>
                     <Select value={sortBy} onValueChange={handleSort}>
                         <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700">
-                            <SelectValue placeholder="Sort by" />
+                            <SelectValue placeholder="並び替え" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Recently Updated">更新日順</SelectItem>
                             <SelectItem value="Name A-Z">タイトル順</SelectItem>
-                            <SelectItem value="Released Date">オンエア順</SelectItem>
+                            <SelectItem value="Released Date">放送日順</SelectItem>
                             <SelectItem value="Rating">評価順</SelectItem>
                         </SelectContent>
                     </Select>
@@ -221,7 +239,7 @@ export function WatchListComponent() {
                             size="sm"
                             onClick={() => setActiveRating(rating as AnimeRating | 'All')}
                         >
-                            {rating}
+                            {rating === 'All' ? 'すべて' : rating}
                         </Button>
                     ))}
                 </div>
@@ -241,8 +259,8 @@ export function WatchListComponent() {
                                     </span>
                                 </div>
                                 <div className="mt-2 flex justify-between items-center">
-                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs md:text-sm">{anime.rating || 'Not Rated'}</span>
-                                    <span className="text-xs md:text-sm">{getAiringStatus(anime)}</span>
+                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs md:text-sm">{anime.rating || '未評価'}</span>
+                                    <span className="text-xs md:text-sm">{getAiringStatus(anime) === 'Upcoming' ? '放送予定' : getAiringStatus(anime) === 'Airing' ? '放送中' : '放送終了'}</span>
                                 </div>
                             </div>
                             <div className="absolute top-2 right-2 flex gap-2">
@@ -256,13 +274,21 @@ export function WatchListComponent() {
                                         <div className="grid gap-4">
                                             <h3 className="font-bold text-lg">{anime.title}</h3>
                                             <p className="text-sm">{anime.synopsis}</p>
-                                            <p className="text-sm"><strong>Broadcast:</strong> {anime.broadcastDate}</p>
-                                            <p className="text-sm"><strong>Update Day:</strong> {anime.updateDay}</p>
-                                            <p className="text-sm"><strong>Status:</strong> {anime.status}</p>
-                                            <p className="text-sm"><strong>Rating:</strong> {anime.rating || 'Not Rated'}</p>
-                                            <p className="text-sm"><strong>Genres:</strong> {Array.isArray(anime.genres) && anime.genres.length > 0 ? anime.genres.join(', ') : 'N/A'}</p>
+                                            <p className="text-sm"><strong>放送日:</strong> {anime.broadcastDate}</p>
+                                            <p className="text-sm"><strong>更新日:</strong> {anime.updateDay}</p>
+                                            <p className="text-sm"><strong>ステータス:</strong> {
+                                                {
+                                                    'Watching': '視聴中',
+                                                    'On-hold': '保留中',
+                                                    'Plan to watch': '視聴予定',
+                                                    'Dropped': '視聴中止',
+                                                    'Completed': '視聴完了'
+                                                }[anime.status]
+                                            }</p>
+                                            <p className="text-sm"><strong>評価:</strong> {anime.rating || '未評価'}</p>
+                                            <p className="text-sm"><strong>ジャンル:</strong> {Array.isArray(anime.genres) && anime.genres.length > 0 ? anime.genres.join(', ') : 'N/A'}</p>
                                             <Button className="w-full" asChild>
-                                                <a href={anime.streamingUrl} target="_blank" rel="noopener noreferrer">Watch now</a>
+                                                <a href={anime.streamingUrl} target="_blank" rel="noopener noreferrer">視聴する</a>
                                             </Button>
                                         </div>
                                     </PopoverContent>
@@ -276,19 +302,25 @@ export function WatchListComponent() {
                                     <DropdownMenuContent>
                                         <DropdownMenuItem onSelect={() => setAnimeToEdit(anime)}>
                                             <Edit className="mr-2 h-4 w-4" />
-                                            <span>Edit</span>
+                                            <span>編集</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        {(['Watching', 'On-hold', 'Plan to watch', 'Dropped', 'Completed'] as AnimeStatus[]).map((status) => (
-                                            <DropdownMenuItem key={status} onSelect={() => handleStatusChange(anime.id, status)}>
-                                                <span>{status}</span>
-                                                {anime.status === status && <span className="ml-2">✓</span>}
+                                        {[
+                                            ['Watching', '視聴中'],
+                                            ['On-hold', '保留中'],
+                                            ['Plan to watch', '視聴予定'],
+                                            ['Dropped', '視聴中止'],
+                                            ['Completed', '視聴完了']
+                                        ].map(([value, label]) => (
+                                            <DropdownMenuItem key={value} onSelect={() => handleStatusChange(anime.id, value as AnimeStatus)}>
+                                                <span>{label}</span>
+                                                {anime.status === value && <span className="ml-2">✓</span>}
                                             </DropdownMenuItem>
                                         ))}
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onSelect={() => handleDeleteAnime(anime.id)} className="text-red-500">
                                             <Trash2 className="mr-2 h-4 w-4" />
-                                            <span>Remove</span>
+                                            <span>削除</span>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
