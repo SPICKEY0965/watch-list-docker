@@ -135,7 +135,7 @@ export function WatchListComponent() {
                         <Button
                             variant="outline"
                             size="icon"
-                            className="md:hidden"
+                            className="md:hidden bg-gray-800 text-white border-gray-700"
                             onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
                             aria-label="フィルターとソートメニューを開く"
                         >
@@ -145,7 +145,7 @@ export function WatchListComponent() {
                             variant="outline"
                             size="icon"
                             onClick={() => setIsAddDialogOpen(true)}
-                            className="bg-gray-800 text-white border-gray-700"
+                            className="bg-gray-800 text-white border-gray-700 md:hidden"
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
@@ -167,6 +167,8 @@ export function WatchListComponent() {
                                 ].map(([value, label]) => (
                                     <Button
                                         key={value}
+                                        className={`${activeTab === value ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'
+                                            }`}
                                         variant={activeTab === value ? "secondary" : "outline"}
                                         size="sm"
                                         onClick={() => setActiveTab(value as AnimeStatus | 'All')}
@@ -182,6 +184,8 @@ export function WatchListComponent() {
                                 {['All', 'SS', 'S', 'A', 'B', 'C'].map((rating) => (
                                     <Button
                                         key={rating}
+                                        className={`${activeRating === rating ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'
+                                            }`}
                                         variant={activeRating === rating ? "secondary" : "outline"}
                                         size="sm"
                                         onClick={() => setActiveRating(rating as AnimeRating | 'All')}
