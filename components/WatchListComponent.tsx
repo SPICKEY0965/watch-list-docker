@@ -19,44 +19,7 @@ export function WatchListComponent() {
     const [sortBy, setSortBy] = useState('Recently Updated')
     const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null)
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
-
-    const sortAnimeList = (list: Anime[], criteria: string): Anime[] => {
-        let sortedList = [...list];
-        switch (criteria) {
-            case 'Recently Updated':
-                sortedList.sort((a, b) => {
-                    const now = new Date();
-                    const lastUpdateA = getLastUpdateDate(a);
-                    const lastUpdateB = getLastUpdateDate(b);
-
-                    if (isAfter(parseISO(a.broadcastDate), now) && !isAfter(parseISO(b.broadcastDate), now)) {
-                        return 1;
-                    }
-                    if (!isAfter(parseISO(a.broadcastDate), now) && isAfter(parseISO(b.broadcastDate), now)) {
-                        return -1;
-                    }
-
-                    return lastUpdateB.getTime() - lastUpdateA.getTime();
-                });
-                break;
-            case 'Name A-Z':
-                sortedList.sort((a, b) => a.title.localeCompare(b.title));
-                break;
-            case 'Released Date':
-                sortedList.sort((a, b) => new Date(b.broadcastDate).getTime() - new Date(a.broadcastDate).getTime());
-                break;
-            case 'Rating':
-                const ratingOrder = ['SS', 'S', 'A', 'B', 'C', null];
-                sortedList.sort((a, b) => ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating));
-                break;
-        }
-        return sortedList;
-    };
-
-    const handleSort = (criteria: string) => {
-        setSortBy(criteria);
-        setAnimeList(prevList => sortAnimeList(prevList, criteria));
-    };
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
     const fetchAnimeList = async () => {
         try {
@@ -78,7 +41,6 @@ export function WatchListComponent() {
         }, 60000);
         return () => clearInterval(interval);
     }, [sortBy]);
-
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
         try {
@@ -120,6 +82,44 @@ export function WatchListComponent() {
         }
     }
 
+    const sortAnimeList = (list: Anime[], criteria: string): Anime[] => {
+        let sortedList = [...list];
+        switch (criteria) {
+            case 'Recently Updated':
+                sortedList.sort((a, b) => {
+                    const now = new Date();
+                    const lastUpdateA = getLastUpdateDate(a);
+                    const lastUpdateB = getLastUpdateDate(b);
+
+                    if (isAfter(parseISO(a.broadcastDate), now) && !isAfter(parseISO(b.broadcastDate), now)) {
+                        return 1;
+                    }
+                    if (!isAfter(parseISO(a.broadcastDate), now) && isAfter(parseISO(b.broadcastDate), now)) {
+                        return -1;
+                    }
+
+                    return lastUpdateB.getTime() - lastUpdateA.getTime();
+                });
+                break;
+            case 'Name A-Z':
+                sortedList.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            case 'Released Date':
+                sortedList.sort((a, b) => new Date(b.broadcastDate).getTime() - new Date(a.broadcastDate).getTime());
+                break;
+            case 'Rating':
+                const ratingOrder = ['SS', 'S', 'A', 'B', 'C', null];
+                sortedList.sort((a, b) => ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating));
+                break;
+        }
+        return sortedList;
+    };
+
+    const handleSort = (criteria: string) => {
+        setSortBy(criteria);
+        setAnimeList(prevList => sortAnimeList(prevList, criteria));
+    };
+
     const filteredAnimeList = animeList
         .filter(anime => activeTab === 'All' || anime.status === activeTab)
         .filter(anime => activeRating === 'All' || anime.rating === activeRating)
@@ -131,15 +131,25 @@ export function WatchListComponent() {
                     <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                         ウォッチリスト
                     </h1>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="md:hidden"
-                        onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                        aria-label="フィルターとソートメニューを開く"
-                    >
-                        <Filter className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="md:hidden"
+                            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                            aria-label="フィルターとソートメニューを開く"
+                        >
+                            <Filter className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsAddDialogOpen(true)}
+                            className="bg-gray-800 text-white border-gray-700"
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {isFilterMenuOpen && (
@@ -218,17 +228,27 @@ export function WatchListComponent() {
                             </Button>
                         ))}
                     </div>
-                    <Select value={sortBy} onValueChange={handleSort}>
-                        <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700">
-                            <SelectValue placeholder="並び替え" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Recently Updated">更新日順</SelectItem>
-                            <SelectItem value="Name A-Z">タイトル順</SelectItem>
-                            <SelectItem value="Released Date">放送日順</SelectItem>
-                            <SelectItem value="Rating">評価順</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                        <Select value={sortBy} onValueChange={handleSort}>
+                            <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700">
+                                <SelectValue placeholder="並び替え" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Recently Updated">更新日順</SelectItem>
+                                <SelectItem value="Name A-Z">タイトル順</SelectItem>
+                                <SelectItem value="Released Date">放送日順</SelectItem>
+                                <SelectItem value="Rating">評価順</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsAddDialogOpen(true)}
+                            className="bg-gray-800 text-white border-gray-700"
+                        >
+                            <Plus className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="hidden md:flex gap-2 md:gap-4 mb-6 flex-wrap">
@@ -335,9 +355,18 @@ export function WatchListComponent() {
                             </Button>
                         </div>
                     ))}
-                    <AddEditAnimeDialog onAddAnime={handleAddAnime} onEditAnime={handleEditAnime} animeToEdit={animeToEdit} />
                 </div>
             </div>
+            <AddEditAnimeDialog
+                onAddAnime={handleAddAnime}
+                onEditAnime={handleEditAnime}
+                animeToEdit={animeToEdit}
+                isOpen={isAddDialogOpen || animeToEdit !== null}
+                onOpenChange={(open) => {
+                    setIsAddDialogOpen(open);
+                    if (!open) setAnimeToEdit(null);
+                }}
+            />
         </div>
     )
 }
