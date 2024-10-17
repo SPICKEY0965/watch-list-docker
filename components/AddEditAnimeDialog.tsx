@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,9 +11,11 @@ interface AddEditAnimeDialogProps {
     onAddAnime: (newAnime: Omit<Anime, 'id'>) => void;
     onEditAnime: (editedAnime: Anime) => void;
     animeToEdit: Anime | null;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
 }
 
-export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: AddEditAnimeDialogProps) {
+export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit, isOpen, onOpenChange }: AddEditAnimeDialogProps) {
     const initialAnimeState: Omit<Anime, 'id'> = {
         title: '',
         type: '',
@@ -32,11 +34,12 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
     };
 
     const [anime, setAnime] = useState<Omit<Anime, 'id'>>(initialAnimeState);
-    const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
         if (animeToEdit) {
             setAnime(animeToEdit)
+        } else {
+            setAnime(initialAnimeState);
         }
     }, [animeToEdit])
 
@@ -49,7 +52,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                 await onAddAnime(anime);
             }
             setAnime(initialAnimeState);
-            setIsOpen(false);
+            onOpenChange(false);
         } catch (error) {
             console.error('Error saving anime:', error);
             alert('コンテンツの保存中にエラーが発生しました。再試行してください。');
@@ -57,26 +60,7 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <Button
-                    variant="outline"
-                    className="h-12 w-full flex items-center justify-center bg-gray-800 text-white hover:bg-gray-700"
-                    onClick={() => setIsOpen(true)}
-                >
-                    {animeToEdit ? (
-                        <>
-                            <Edit2 className="h-5 w-5 mr-2" />
-                            編集
-                        </>
-                    ) : (
-                        <>
-                            <Plus className="h-5 w-5 mr-2" />
-                            追加
-                        </>
-                    )}
-                </Button>
-            </DialogTrigger>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] w-[95vw] max-w-[95vw] sm:w-full max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-xl">{animeToEdit ? '編集' : '追加'}</DialogTitle>
@@ -218,11 +202,8 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit }: Add
                         </div>
                     </div>
                     <div className="flex gap-4 mt-4 sticky bottom-0">
-                        <Button type="button" variant="outline" className="w-full" onClick={() => {
-                            setAnime(initialAnimeState);
-                            setIsOpen(false);
-                        }}>キャンセル</Button>
-                        <Button type="submit" className="w-full">{animeToEdit ? '更新' : 'アニメを追加'}</Button>
+                        <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>キャンセル</Button>
+                        <Button type="submit" className="w-full">{animeToEdit ? '更新' : '追加'}</Button>
                     </div>
                 </form>
             </DialogContent>
