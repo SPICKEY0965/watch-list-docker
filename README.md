@@ -22,7 +22,7 @@
 
    ```bash
    git clone https://github.com/SPICKEY0965/Watch-list.git
-   cd Watch-List
+   cd watch-list-docker
     ```
 2. Docker Composeを実行します。
 
