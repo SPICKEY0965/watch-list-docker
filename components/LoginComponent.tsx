@@ -13,15 +13,25 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const validatePassword = (password: string) => {
     const isValid = password.length >= 8 &&
       /[a-z]/.test(password) &&
       /[A-Z]/.test(password) &&
       /\d/.test(password) &&
-      /[!@#$%^&*]/.test(password);
+      /[@%+\/'!#$^?:.\(\)\{\}\[\]~`_-]/.test(password);
     return isValid;
   }
+
+
+  const getPasswordValidationStatus = (password: string) => ({
+    length: password.length >= 8,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    number: /\d/.test(password),
+    special: /[@%+\/'!#$^?:.\(\)\{\}\[\]~`_-]/.test(password),
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +73,8 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
     }
   }
 
+  const passwordValidationStatus = getPasswordValidationStatus(password);
+
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-lg shadow-md w-96">
@@ -83,14 +95,43 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
           </div>
           <div>
             <Label htmlFor="password" className="text-white">パスワード</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full text-white placeholder-gray-500"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full text-white placeholder-gray-500 pr-10" // 右側に余白を確保
+              />
+              <Button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-white bg-transparent hover:bg-transparent"
+              >
+                {showPassword ? '非表示' : '表示'}
+              </Button>
+            </div>
+
+            {isRegistering && (
+              <div className="mt-2 text-sm text-white space-y-1">
+                <p className={passwordValidationStatus.length ? 'text-green-500' : 'text-red-500'}>
+                  {passwordValidationStatus.length ? '✔️' : '✗'} 8文字以上
+                </p>
+                <p className={passwordValidationStatus.lowercase ? 'text-green-500' : 'text-red-500'}>
+                  {passwordValidationStatus.lowercase ? '✔️' : '✗'} 小文字
+                </p>
+                <p className={passwordValidationStatus.uppercase ? 'text-green-500' : 'text-red-500'}>
+                  {passwordValidationStatus.uppercase ? '✔️' : '✗'} 大文字
+                </p>
+                <p className={passwordValidationStatus.number ? 'text-green-500' : 'text-red-500'}>
+                  {passwordValidationStatus.number ? '✔️' : '✗'} 数字
+                </p>
+                <p className={passwordValidationStatus.special ? 'text-green-500' : 'text-red-500'}>
+                  {passwordValidationStatus.special ? '✔️' : '✗'} 特殊文字 (@  %  +  \  /  '  !  #  $  ^  ?  :  .  (  )  { }  [  ]  ~  `  -  _)
+                </p>
+              </div>
+            )}
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <Button type="submit" className="w-full">

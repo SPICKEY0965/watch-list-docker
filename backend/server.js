@@ -130,7 +130,7 @@ app.post('/api/login', (req, res) => {
 app.delete('/api/user', verifyToken, (req, res) => {
     const userId = req.userId;
 
-    // トランザクションを使用して、ユーザーと関連するアニメを一緒に削除する
+    // トランザクションを使用して、ユーザーと関連するコンテンツを一緒に削除する
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
 
