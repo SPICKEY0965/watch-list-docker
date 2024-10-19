@@ -10,6 +10,7 @@ import axios from 'axios';
 import { Anime, AnimeStatus, AnimeRating, AiringStatus } from './types';
 import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
 import { AddEditAnimeDialog } from './AddEditAnimeDialog';
+import { LoginComponent } from './LoginComponent';
 
 export function WatchListComponent() {
     const [animeList, setAnimeList] = useState<Anime[]>([]);
@@ -19,31 +20,62 @@ export function WatchListComponent() {
     const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [token, setToken] = useState<string | null>(null);
+
+    useEffect(() => {
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            setToken(storedToken);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (token) {
+            fetchAnimeList();
+        }
+    }, [token]);
 
     const fetchAnimeList = async () => {
         try {
-            const response = await axios.get('http://192.168.1.210:5000/api/anime');
+            const response = await axios.get('http://192.168.1.210:5000/api/anime', {
+                headers: { Authorization: token }
+            });
             const updatedAnimeList = response.data.map((anime: Anime) => ({
                 ...anime,
                 currentEpisode: calculateCurrentEpisode(anime)
             }));
             setAnimeList(sortAnimeList(updatedAnimeList, sortBy));
         } catch (error) {
-            console.error('Error fetching anime list', error);
+            if (axios.isAxiosError(error)) {
+                console.error('Error fetching anime list', error.message);
+                if (error.response && error.response.status === 403) {
+                    // Token is invalid or expired
+                    setToken(null);
+                    localStorage.removeItem('token');
+                }
+            } else {
+                console.error('Unexpected error', error);
+            }
         }
     };
 
-    useEffect(() => {
-        fetchAnimeList();
-        const interval = setInterval(() => {
-            setAnimeList(prevList => sortAnimeList(prevList, sortBy));
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [sortBy]);
+
+    const handleLogin = (newToken: string) => {
+        setToken(newToken);
+        localStorage.setItem('token', newToken);
+    };
+
+    const handleLogout = () => {
+        setToken(null);
+        localStorage.removeItem('token');
+        setAnimeList([]);
+    };
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
         try {
-            const response = await axios.post('http://192.168.1.210:5000/api/anime', newAnime);
+            const response = await axios.post('http://192.168.1.210:5000/api/anime', newAnime, {
+                headers: { Authorization: token }
+            });
             setAnimeList(prevList => sortAnimeList([...prevList, response.data], sortBy));
         } catch (error) {
             console.error('Error adding anime', error);
@@ -52,7 +84,9 @@ export function WatchListComponent() {
 
     const handleEditAnime = async (editedAnime: Anime) => {
         try {
-            const response = await axios.put(`http://192.168.1.210:5000/api/anime/${editedAnime.id}`, editedAnime);
+            const response = await axios.put(`http://192.168.1.210:5000/api/anime/${editedAnime.id}`, editedAnime, {
+                headers: { Authorization: token }
+            });
             setAnimeList(prevList => sortAnimeList(prevList.map(anime => anime.id === editedAnime.id ? response.data : anime), sortBy));
             setAnimeToEdit(null);
         } catch (error) {
@@ -62,7 +96,9 @@ export function WatchListComponent() {
 
     const handleDeleteAnime = async (id: number) => {
         try {
-            await axios.delete(`http://192.168.1.210:5000/api/anime/${id}`);
+            await axios.delete(`http://192.168.1.210:5000/api/anime/${id}`, {
+                headers: { Authorization: token }
+            });
             setAnimeList(prevList => sortAnimeList(prevList.filter(anime => anime.id !== id), sortBy));
         } catch (error) {
             console.error('Error deleting anime', error);
@@ -202,6 +238,10 @@ export function WatchListComponent() {
         </>
     );
 
+    if (!token) {
+        return <LoginComponent onLogin={handleLogin} />;
+    }
+
     return (
         <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
             <div className="max-w-6xl mx-auto">
@@ -209,6 +249,16 @@ export function WatchListComponent() {
                     <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                         ウォッチリスト
                     </h1>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleLogout}
+                            className="bg-gray-800 text-white border-gray-700"
+                        >
+                            ログアウト
+                        </Button>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
@@ -361,4 +411,5 @@ export function WatchListComponent() {
             />
         </div>
     );
+
 }
