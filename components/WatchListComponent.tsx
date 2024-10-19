@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Heart, MoreVertical, Plus, Trash2, Edit, Info, Play, Filter } from 'lucide-react';
+import { Heart, MoreVertical, Plus, Trash2, Edit, Info, Play, Filter, Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import axios from 'axios';
 import { Anime, AnimeStatus, AnimeRating, AiringStatus } from './types';
 import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
@@ -20,6 +21,8 @@ export function WatchListComponent() {
     const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
     const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
@@ -50,15 +53,13 @@ export function WatchListComponent() {
                 console.error('Error fetching anime list', error.message);
                 if (error.response && error.response.status === 403) {
                     // Token is invalid or expired
-                    setToken(null);
-                    localStorage.removeItem('token');
+                    handleLogout();
                 }
             } else {
                 console.error('Unexpected error', error);
             }
         }
     };
-
 
     const handleLogin = (newToken: string) => {
         setToken(newToken);
@@ -69,6 +70,17 @@ export function WatchListComponent() {
         setToken(null);
         localStorage.removeItem('token');
         setAnimeList([]);
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            await axios.delete('http://192.168.1.210:5000/api/user', {
+                headers: { Authorization: token }
+            });
+            handleLogout();
+        } catch (error) {
+            console.error('Error deleting account', error);
+        }
     };
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
@@ -238,6 +250,38 @@ export function WatchListComponent() {
         </>
     );
 
+    const renderSettingsButton = () => (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="bg-gray-800 text-white border-gray-700"
+                >
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56">
+                <div className="grid gap-4">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={handleLogout}
+                    >
+                        ログアウト
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-red-500"
+                        onClick={() => setIsDeleteAccountDialogOpen(true)}
+                    >
+                        アカウント削除
+                    </Button>
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+
     if (!token) {
         return <LoginComponent onLogin={handleLogin} />;
     }
@@ -249,21 +293,11 @@ export function WatchListComponent() {
                     <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
                         ウォッチリスト
                     </h1>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleLogout}
-                            className="bg-gray-800 text-white border-gray-700"
-                        >
-                            ログアウト
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    <div className="md:hidden bg-gray-800 text-white border-gray-700 flex items-center gap-2">
+                        {renderSettingsButton()}
                         <Button
                             variant="outline"
                             size="icon"
-                            className="md:hidden bg-gray-800 text-white border-gray-700"
                             onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
                             aria-label="フィルターとソートメニューを開く"
                         >
@@ -273,7 +307,7 @@ export function WatchListComponent() {
                             variant="outline"
                             size="icon"
                             onClick={() => setIsAddDialogOpen(true)}
-                            className="bg-gray-800 text-white border-gray-700 md:hidden"
+                            className="bg-gray-800 text-white border-gray-700"
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
@@ -379,6 +413,7 @@ export function WatchListComponent() {
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
+                        {renderSettingsButton()}
                     </div>
                 </div>
 
@@ -409,7 +444,24 @@ export function WatchListComponent() {
                     if (!open) setAnimeToEdit(null);
                 }}
             />
+            <Dialog open={isDeleteAccountDialogOpen} onOpenChange={setIsDeleteAccountDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>アカウント削除の確認</DialogTitle>
+                        <DialogDescription>
+                            本当にアカウントを削除しますか？この操作は取り消せません。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteAccountDialogOpen(false)}>
+                            キャンセル
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteAccount}>
+                            削除する
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
-
 }

@@ -126,6 +126,52 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// Delete user account (protected route)
+app.delete('/api/user', verifyToken, (req, res) => {
+    const userId = req.userId;
+
+    // トランザクションを使用して、ユーザーと関連するアニメを一緒に削除する
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        // まずanimeテーブルのデータを削除
+        db.run('DELETE FROM anime WHERE user_id = ?', [userId], function (err) {
+            if (err) {
+                console.error('Error deleting user\'s anime:', err);
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Failed to delete user\'s anime.' });
+            }
+        });
+
+        // 次にusersテーブルからユーザーを削除
+        db.run('DELETE FROM users WHERE id = ?', [userId], function (err) {
+            if (err) {
+                console.error('Error deleting user:', err);
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Failed to delete user.' });
+            }
+
+            // ユーザーが見つからなかった場合
+            if (this.changes === 0) {
+                db.run('ROLLBACK');
+                return res.status(404).json({ error: 'User not found.' });
+            }
+
+            // 成功した場合はコミット
+            db.run('COMMIT', (err) => {
+                if (err) {
+                    console.error('Transaction commit error:', err);
+                    return res.status(500).json({ error: 'Transaction error occurred.' });
+                }
+
+                // 成功のレスポンスを送信
+                res.sendStatus(204);
+            });
+        });
+    });
+});
+
+
 // Get anime list (protected route)
 app.get('/api/anime', verifyToken, (req, res) => {
     db.all('SELECT * FROM anime WHERE user_id = ?', [req.userId], (err, rows) => {
