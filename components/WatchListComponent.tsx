@@ -10,16 +10,15 @@ import axios from 'axios';
 import { Anime, AnimeStatus, AnimeRating, AiringStatus } from './types';
 import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
 import { AddEditAnimeDialog } from './AddEditAnimeDialog';
-import { addDays, getDay, parseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
 
 export function WatchListComponent() {
-    const [animeList, setAnimeList] = useState<Anime[]>([])
-    const [activeTab, setActiveTab] = useState<AnimeStatus | 'All'>('All')
-    const [activeRating, setActiveRating] = useState<AnimeRating | 'All'>('All')
-    const [sortBy, setSortBy] = useState('Recently Updated')
-    const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null)
-    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+    const [animeList, setAnimeList] = useState<Anime[]>([]);
+    const [activeTab, setActiveTab] = useState<AnimeStatus | 'All'>('All');
+    const [activeRating, setActiveRating] = useState<AnimeRating | 'All'>('All');
+    const [sortBy, setSortBy] = useState('Recently Updated');
+    const [animeToEdit, setAnimeToEdit] = useState<Anime | null>(null);
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
     const fetchAnimeList = async () => {
         try {
@@ -32,7 +31,7 @@ export function WatchListComponent() {
         } catch (error) {
             console.error('Error fetching anime list', error);
         }
-    }
+    };
 
     useEffect(() => {
         fetchAnimeList();
@@ -45,30 +44,30 @@ export function WatchListComponent() {
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
         try {
             const response = await axios.post('http://192.168.1.210:5000/api/anime', newAnime);
-            setAnimeList(prevList => [...prevList, response.data]);
+            setAnimeList(prevList => sortAnimeList([...prevList, response.data], sortBy));
         } catch (error) {
             console.error('Error adding anime', error);
         }
-    }
+    };
 
     const handleEditAnime = async (editedAnime: Anime) => {
         try {
             const response = await axios.put(`http://192.168.1.210:5000/api/anime/${editedAnime.id}`, editedAnime);
-            setAnimeList(prevList => prevList.map(anime => anime.id === editedAnime.id ? response.data : anime));
+            setAnimeList(prevList => sortAnimeList(prevList.map(anime => anime.id === editedAnime.id ? response.data : anime), sortBy));
             setAnimeToEdit(null);
         } catch (error) {
             console.error('Error editing anime', error);
         }
-    }
+    };
 
     const handleDeleteAnime = async (id: number) => {
         try {
             await axios.delete(`http://192.168.1.210:5000/api/anime/${id}`);
-            setAnimeList(prevList => prevList.filter(anime => anime.id !== id));
+            setAnimeList(prevList => sortAnimeList(prevList.filter(anime => anime.id !== id), sortBy));
         } catch (error) {
             console.error('Error deleting anime', error);
         }
-    }
+    };
 
     const handleStatusChange = async (id: number, newStatus: AnimeStatus) => {
         try {
@@ -80,39 +79,24 @@ export function WatchListComponent() {
         } catch (error) {
             console.error('Error changing anime status', error);
         }
-    }
+    };
 
     const sortAnimeList = (list: Anime[], criteria: string): Anime[] => {
-        let sortedList = [...list];
-        switch (criteria) {
-            case 'Recently Updated':
-                sortedList.sort((a, b) => {
-                    const now = new Date();
-                    const lastUpdateA = getLastUpdateDate(a);
-                    const lastUpdateB = getLastUpdateDate(b);
-
-                    if (isAfter(parseISO(a.broadcastDate), now) && !isAfter(parseISO(b.broadcastDate), now)) {
-                        return 1;
-                    }
-                    if (!isAfter(parseISO(a.broadcastDate), now) && isAfter(parseISO(b.broadcastDate), now)) {
-                        return -1;
-                    }
-
-                    return lastUpdateB.getTime() - lastUpdateA.getTime();
-                });
-                break;
-            case 'Name A-Z':
-                sortedList.sort((a, b) => a.title.localeCompare(b.title));
-                break;
-            case 'Released Date':
-                sortedList.sort((a, b) => new Date(b.broadcastDate).getTime() - new Date(a.broadcastDate).getTime());
-                break;
-            case 'Rating':
-                const ratingOrder = ['SS', 'S', 'A', 'B', 'C', null];
-                sortedList.sort((a, b) => ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating));
-                break;
-        }
-        return sortedList;
+        return [...list].sort((a, b) => {
+            switch (criteria) {
+                case 'Recently Updated':
+                    return getLastUpdateDate(b).getTime() - getLastUpdateDate(a).getTime();
+                case 'Name A-Z':
+                    return a.title.localeCompare(b.title);
+                case 'Released Date':
+                    return new Date(b.broadcastDate).getTime() - new Date(a.broadcastDate).getTime();
+                case 'Rating':
+                    const ratingOrder = ['SS', 'S', 'A', 'B', 'C', null];
+                    return ratingOrder.indexOf(a.rating) - ratingOrder.indexOf(b.rating);
+                default:
+                    return 0;
+            }
+        });
     };
 
     const handleSort = (criteria: string) => {
@@ -122,7 +106,101 @@ export function WatchListComponent() {
 
     const filteredAnimeList = animeList
         .filter(anime => activeTab === 'All' || anime.status === activeTab)
-        .filter(anime => activeRating === 'All' || anime.rating === activeRating)
+        .filter(anime => activeRating === 'All' || anime.rating === activeRating);
+
+    const renderAnimeCard = (anime: Anime) => (
+        <div key={anime.id} className="bg-gray-800 rounded-lg overflow-hidden relative">
+            <img src={anime.image} alt={anime.title} className="w-full h-48 object-cover" />
+            <div className="p-4">
+                <h3 className="font-bold mb-2 text-sm md:text-base line-clamp-1">{anime.title}</h3>
+                <div className="flex justify-between text-xs md:text-sm text-gray-400">
+                    <span>
+                        <span className="bg-gray-700 px-1 rounded">{anime.currentEpisode}/{anime.episodes}</span>
+                    </span>
+                </div>
+                <div className="mt-2 flex justify-between items-center">
+                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs md:text-sm">{anime.rating || '未評価'}</span>
+                    <span className="text-xs md:text-sm">{getAiringStatus(anime) === 'Upcoming' ? '放送予定' : getAiringStatus(anime) === 'Airing' ? '放送中' : '放送終了'}</span>
+                </div>
+            </div>
+            {renderAnimeCardActions(anime)}
+        </div>
+    );
+
+    const renderAnimeCardActions = (anime: Anime) => (
+        <>
+            <div className="absolute top-2 right-2 flex gap-2">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-gray-800 hover:bg-gray-700">
+                            <Info className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                        <div className="grid gap-4">
+                            <h3 className="font-bold text-lg">{anime.title}</h3>
+                            <p className="text-sm">{anime.synopsis}</p>
+                            <p className="text-sm"><strong>放送日:</strong> {anime.broadcastDate}</p>
+                            <p className="text-sm"><strong>更新日:</strong> {anime.updateDay}</p>
+                            <p className="text-sm"><strong>ステータス:</strong> {
+                                {
+                                    'Watching': '視聴中',
+                                    'On-hold': '保留中',
+                                    'Plan to watch': '視聴予定',
+                                    'Dropped': '視聴中止',
+                                    'Completed': '視聴完了'
+                                }[anime.status]
+                            }</p>
+                            <p className="text-sm"><strong>評価:</strong> {anime.rating || '未評価'}</p>
+                            <p className="text-sm"><strong>ジャンル:</strong> {Array.isArray(anime.genres) && anime.genres.length > 0 ? anime.genres.join(', ') : 'N/A'}</p>
+                            <Button className="w-full" asChild>
+                                <a href={anime.streamingUrl} target="_blank" rel="noopener noreferrer">視聴する</a>
+                            </Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-gray-800 hover:bg-gray-700">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => setAnimeToEdit(anime)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>編集</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {[
+                            ['Watching', '視聴中'],
+                            ['On-hold', '保留中'],
+                            ['Plan to watch', '視聴予定'],
+                            ['Dropped', '視聴中止'],
+                            ['Completed', '視聴完了']
+                        ].map(([value, label]) => (
+                            <DropdownMenuItem key={value} onSelect={() => handleStatusChange(anime.id, value as AnimeStatus)}>
+                                <span>{label}</span>
+                                {anime.status === value && <span className="ml-2">✓</span>}
+                            </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => handleDeleteAnime(anime.id)} className="text-red-500">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>削除</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-2 right-2 bg-gray-800 hover:bg-gray-700"
+                onClick={() => window.open(anime.streamingUrl, '_blank')}
+            >
+                <Play className="h-4 w-4" />
+            </Button>
+        </>
+    );
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
@@ -167,8 +245,7 @@ export function WatchListComponent() {
                                 ].map(([value, label]) => (
                                     <Button
                                         key={value}
-                                        className={`${activeTab === value ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'
-                                            }`}
+                                        className={`${activeTab === value ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'}`}
                                         variant={activeTab === value ? "secondary" : "outline"}
                                         size="sm"
                                         onClick={() => setActiveTab(value as AnimeStatus | 'All')}
@@ -184,8 +261,7 @@ export function WatchListComponent() {
                                 {['All', 'SS', 'S', 'A', 'B', 'C'].map((rating) => (
                                     <Button
                                         key={rating}
-                                        className={`${activeRating === rating ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'
-                                            }`}
+                                        className={`${activeRating === rating ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'}`}
                                         variant={activeRating === rating ? "secondary" : "outline"}
                                         size="sm"
                                         onClick={() => setActiveRating(rating as AnimeRating | 'All')}
@@ -210,6 +286,7 @@ export function WatchListComponent() {
                             </Select>
                         </div>
                     </div>
+
                 )}
 
                 <div className="hidden md:flex justify-between items-center mb-6">
@@ -269,96 +346,7 @@ export function WatchListComponent() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                    {filteredAnimeList.map((anime) => (
-                        <div
-                            key={anime.id}
-                            className="bg-gray-800 rounded-lg overflow-hidden relative"
-                        >
-                            <img src={anime.image} alt={anime.title} className="w-full h-48 object-cover" />
-                            <div className="p-4">
-                                <h3 className="font-bold mb-2 text-sm md:text-base line-clamp-1">{anime.title}</h3>
-                                <div className="flex justify-between text-xs md:text-sm text-gray-400">
-                                    <span>
-                                        <span className="bg-gray-700 px-1 rounded">{anime.currentEpisode}/{anime.episodes}</span>
-                                    </span>
-                                </div>
-                                <div className="mt-2 flex justify-between items-center">
-                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs md:text-sm">{anime.rating || '未評価'}</span>
-                                    <span className="text-xs md:text-sm">{getAiringStatus(anime) === 'Upcoming' ? '放送予定' : getAiringStatus(anime) === 'Airing' ? '放送中' : '放送終了'}</span>
-                                </div>
-                            </div>
-                            <div className="absolute top-2 right-2 flex gap-2">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="bg-gray-800 hover:bg-gray-700">
-                                            <Info className="h-4 w-4" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80">
-                                        <div className="grid gap-4">
-                                            <h3 className="font-bold text-lg">{anime.title}</h3>
-                                            <p className="text-sm">{anime.synopsis}</p>
-                                            <p className="text-sm"><strong>放送日:</strong> {anime.broadcastDate}</p>
-                                            <p className="text-sm"><strong>更新日:</strong> {anime.updateDay}</p>
-                                            <p className="text-sm"><strong>ステータス:</strong> {
-                                                {
-                                                    'Watching': '視聴中',
-                                                    'On-hold': '保留中',
-                                                    'Plan to watch': '視聴予定',
-                                                    'Dropped': '視聴中止',
-                                                    'Completed': '視聴完了'
-                                                }[anime.status]
-                                            }</p>
-                                            <p className="text-sm"><strong>評価:</strong> {anime.rating || '未評価'}</p>
-                                            <p className="text-sm"><strong>ジャンル:</strong> {Array.isArray(anime.genres) && anime.genres.length > 0 ? anime.genres.join(', ') : 'N/A'}</p>
-                                            <Button className="w-full" asChild>
-                                                <a href={anime.streamingUrl} target="_blank" rel="noopener noreferrer">視聴する</a>
-                                            </Button>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="bg-gray-800 hover:bg-gray-700">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => setAnimeToEdit(anime)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            <span>編集</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        {[
-                                            ['Watching', '視聴中'],
-                                            ['On-hold', '保留中'],
-                                            ['Plan to watch', '視聴予定'],
-                                            ['Dropped', '視聴中止'],
-                                            ['Completed', '視聴完了']
-                                        ].map(([value, label]) => (
-                                            <DropdownMenuItem key={value} onSelect={() => handleStatusChange(anime.id, value as AnimeStatus)}>
-                                                <span>{label}</span>
-                                                {anime.status === value && <span className="ml-2">✓</span>}
-                                            </DropdownMenuItem>
-                                        ))}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => handleDeleteAnime(anime.id)} className="text-red-500">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            <span>削除</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute bottom-2 right-2 bg-gray-800 hover:bg-gray-700"
-                                onClick={() => window.open(anime.streamingUrl, '_blank')}
-                            >
-                                <Play className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
+                    {filteredAnimeList.map(renderAnimeCard)}
                 </div>
             </div>
             <AddEditAnimeDialog
@@ -372,5 +360,5 @@ export function WatchListComponent() {
                 }}
             />
         </div>
-    )
+    );
 }
