@@ -51,14 +51,10 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             title TEXT,
-            genres TEXT,
-            type TEXT,
             duration INTEGER,
             episodes INTEGER,
             currentEpisode INTEGER,
             image TEXT,
-            synopsis TEXT,
-            japaneseTitle TEXT,
             broadcastDate TEXT,
             updateDay TEXT,
             streamingUrl TEXT,
@@ -113,7 +109,7 @@ app.post('/api/login', (req, res) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
         if (err) {
             console.error('Database error:', err);
-            return res.status(500).json({ error: 'An internal server error occurred.' });  // より一般的なエラーメッセージ
+            return res.status(500).json({ error: 'An internal server error occurred.' });
         }
         if (!user) {
             return res.status(404).json({ error: 'User not found or Invalid password.' });
@@ -130,11 +126,9 @@ app.post('/api/login', (req, res) => {
 app.delete('/api/user', verifyToken, (req, res) => {
     const userId = req.userId;
 
-    // トランザクションを使用して、ユーザーと関連するコンテンツを一緒に削除する
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
 
-        // まずanimeテーブルのデータを削除
         db.run('DELETE FROM anime WHERE user_id = ?', [userId], function (err) {
             if (err) {
                 console.error('Error deleting user\'s anime:', err);
@@ -143,7 +137,6 @@ app.delete('/api/user', verifyToken, (req, res) => {
             }
         });
 
-        // 次にusersテーブルからユーザーを削除
         db.run('DELETE FROM users WHERE id = ?', [userId], function (err) {
             if (err) {
                 console.error('Error deleting user:', err);
@@ -151,26 +144,22 @@ app.delete('/api/user', verifyToken, (req, res) => {
                 return res.status(500).json({ error: 'Failed to delete user.' });
             }
 
-            // ユーザーが見つからなかった場合
             if (this.changes === 0) {
                 db.run('ROLLBACK');
                 return res.status(404).json({ error: 'User not found.' });
             }
 
-            // 成功した場合はコミット
             db.run('COMMIT', (err) => {
                 if (err) {
                     console.error('Transaction commit error:', err);
                     return res.status(500).json({ error: 'Transaction error occurred.' });
                 }
 
-                // 成功のレスポンスを送信
                 res.sendStatus(204);
             });
         });
     });
 });
-
 
 // Get anime list (protected route)
 app.get('/api/anime', verifyToken, (req, res) => {
@@ -180,35 +169,28 @@ app.get('/api/anime', verifyToken, (req, res) => {
             return res.status(500).json({ error: 'Database error occurred.' });
         }
 
-        const formattedResults = rows.map(anime => ({
-            ...anime,
-            genres: anime.genres ? JSON.parse(anime.genres) : []
-        }));
-
-        res.json(formattedResults);
+        res.json(rows);
     });
 });
 
 // Add new anime (protected route)
 app.post('/api/anime', verifyToken, (req, res) => {
-    const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+    const { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
 
-    const formattedGenres = JSON.stringify(genres);
-
     const query = `
-        INSERT INTO anime (user_id, title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO anime (user_id, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.run(query, [req.userId, title, formattedGenres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating], function (err) {
+    db.run(query, [req.userId, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating], function (err) {
         if (err) {
             console.error('Error inserting new anime:', err);
             return res.status(500).json({ error: 'Database error occurred.' });
         }
-        const insertedAnime = { id: this.lastID, user_id: req.userId, title, genres: JSON.parse(formattedGenres), type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating };
+        const insertedAnime = { id: this.lastID, user_id: req.userId, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating };
         res.status(201).json(insertedAnime);
     });
 });
@@ -216,17 +198,17 @@ app.post('/api/anime', verifyToken, (req, res) => {
 // Update anime (protected route)
 app.put('/api/anime/:id', verifyToken, (req, res) => {
     const { id } = req.params;
-    const { title, genres, type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+    const { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
 
-    const updatedAnime = { title, genres: JSON.stringify(genres), type, duration, episodes, currentEpisode, image, synopsis, japaneseTitle, broadcastDate, updateDay, streamingUrl, status, rating };
+    const updatedAnime = { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating };
 
     const query = `
     UPDATE anime
-    SET title = ?, genres = ?, type = ?, duration = ?, episodes = ?, currentEpisode = ?, image = ?, synopsis = ?, japaneseTitle = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, status = ?, rating = ?
+    SET title = ?, duration = ?, episodes = ?, currentEpisode = ?, image = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, status = ?, rating = ?
     WHERE id = ? AND user_id = ?
 `;
     db.run(query, [...Object.values(updatedAnime), id, req.userId], function (err) {
@@ -237,7 +219,7 @@ app.put('/api/anime/:id', verifyToken, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({ error: 'Anime not found or you do not have permission to update it.' });
         }
-        const responseAnime = { ...updatedAnime, id, user_id: req.userId, genres: JSON.parse(updatedAnime.genres) };
+        const responseAnime = { ...updatedAnime, id, user_id: req.userId };
         res.json(responseAnime);
     });
 });

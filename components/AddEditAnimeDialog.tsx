@@ -18,19 +18,15 @@ interface AddEditAnimeDialogProps {
 export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit, isOpen, onOpenChange }: AddEditAnimeDialogProps) {
     const initialAnimeState: Omit<Anime, 'id'> = {
         title: '',
-        type: '',
         duration: '',
         episodes: 12,
         currentEpisode: 0,
         image: '',
         rating: null,
-        synopsis: '',
-        japaneseTitle: '',
         broadcastDate: '',
         updateDay: '',
         streamingUrl: '',
-        status: 'Watching',
-        genres: []
+        status: 'Watching'
     };
 
     const [anime, setAnime] = useState<Omit<Anime, 'id'>>(initialAnimeState);
@@ -80,17 +76,6 @@ export function AddEditAnimeDialog({ onAddAnime, onEditAnime, animeToEdit, isOpe
                                 onChange={(e) => setAnime({ ...anime, title: e.target.value })}
                                 className="w-full"
                                 placeholder="必須"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="type" className="text-sm font-medium leading-none">
-                                ジャンル
-                            </Label>
-                            <Input
-                                id="type"
-                                value={anime.type}
-                                onChange={(e) => setAnime({ ...anime, type: e.target.value })}
-                                className="w-full"
                             />
                         </div>
                         <div className="space-y-1">

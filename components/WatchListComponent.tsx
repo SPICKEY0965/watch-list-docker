@@ -187,7 +187,6 @@ export function WatchListComponent() {
                     <PopoverContent className="w-80">
                         <div className="grid gap-4">
                             <h3 className="font-bold text-lg">{anime.title}</h3>
-                            <p className="text-sm">{anime.synopsis}</p>
                             <p className="text-sm"><strong>放送日:</strong> {anime.broadcastDate}</p>
                             <p className="text-sm"><strong>更新日:</strong> {anime.updateDay}</p>
                             <p className="text-sm"><strong>ステータス:</strong> {
@@ -200,7 +199,6 @@ export function WatchListComponent() {
                                 }[anime.status]
                             }</p>
                             <p className="text-sm"><strong>評価:</strong> {anime.rating || '未評価'}</p>
-                            <p className="text-sm"><strong>ジャンル:</strong> {Array.isArray(anime.genres) && anime.genres.length > 0 ? anime.genres.join(', ') : 'N/A'}</p>
                             <Button className="w-full" asChild>
                                 <a href={anime.streamingUrl} target="_blank" rel="noopener noreferrer">視聴する</a>
                             </Button>
