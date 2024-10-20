@@ -292,11 +292,11 @@ export function WatchListComponent() {
                         ウォッチリスト
                     </h1>
                     <div className="md:hidden bg-gray-800 text-white border-gray-700 flex items-center gap-2">
-                        {renderSettingsButton()}
                         <Button
                             variant="outline"
                             size="icon"
                             onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                            className="bg-gray-800 text-white border-gray-700"
                             aria-label="フィルターとソートメニューを開く"
                         >
                             <Filter className="h-4 w-4" />
@@ -309,6 +309,7 @@ export function WatchListComponent() {
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
+                        {renderSettingsButton()}
                     </div>
                 </div>
 
