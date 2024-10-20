@@ -91,6 +91,7 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
               onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full text-white placeholder-gray-500"
+              autoComplete="username"
             />
           </div>
           <div>
@@ -102,7 +103,8 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full text-white placeholder-gray-500 pr-10" // 右側に余白を確保
+                className="w-full text-white placeholder-gray-500 pr-10"
+                autoComplete="current-password"
               />
               <Button
                 type="button"
