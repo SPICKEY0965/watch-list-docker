@@ -40,7 +40,7 @@ export function WatchListComponent() {
 
     const fetchAnimeList = async () => {
         try {
-            const response = await axios.get('http://192.168.1.210:5000/api/anime', {
+            const response = await axios.get('http://192.168.1.210:5000/api/contents', {
                 headers: { Authorization: token }
             });
             const updatedAnimeList = response.data.map((anime: Anime) => ({
@@ -85,7 +85,7 @@ export function WatchListComponent() {
 
     const handleAddAnime = async (newAnime: Omit<Anime, 'id'>) => {
         try {
-            const response = await axios.post('http://192.168.1.210:5000/api/anime', newAnime, {
+            const response = await axios.post('http://192.168.1.210:5000/api/contents', newAnime, {
                 headers: { Authorization: token }
             });
             setAnimeList(prevList => sortAnimeList([...prevList, response.data], sortBy));
@@ -96,7 +96,7 @@ export function WatchListComponent() {
 
     const handleEditAnime = async (editedAnime: Anime) => {
         try {
-            const response = await axios.put(`http://192.168.1.210:5000/api/anime/${editedAnime.id}`, editedAnime, {
+            const response = await axios.put(`http://192.168.1.210:5000/api/contents/${editedAnime.id}`, editedAnime, {
                 headers: { Authorization: token }
             });
             setAnimeList(prevList => sortAnimeList(prevList.map(anime => anime.id === editedAnime.id ? response.data : anime), sortBy));
@@ -108,7 +108,7 @@ export function WatchListComponent() {
 
     const handleDeleteAnime = async (id: number) => {
         try {
-            await axios.delete(`http://192.168.1.210:5000/api/anime/${id}`, {
+            await axios.delete(`http://192.168.1.210:5000/api/contents/${id}`, {
                 headers: { Authorization: token }
             });
             setAnimeList(prevList => sortAnimeList(prevList.filter(anime => anime.id !== id), sortBy));
