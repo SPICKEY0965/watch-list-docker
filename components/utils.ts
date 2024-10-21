@@ -1,11 +1,11 @@
 import { addDays, getDay, parseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
-import { Anime, AiringStatus } from './types';
+import { Contents, AiringStatus } from './types';
 
-export function calculateNextBroadcastDate(anime: Anime): Date {
+export function calculateNextBroadcastDate(contents: Contents): Date {
     const currentDate = new Date();
     const currentDayOfWeek = currentDate.getDay();
-    const broadcastDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(anime.updateDay);
-    const broadcastStartDate = parseISO(anime.broadcastDate);
+    const broadcastDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(contents.updateDay);
+    const broadcastStartDate = parseISO(contents.broadcastDate);
 
     if (isBefore(currentDate, broadcastStartDate)) {
         return broadcastStartDate;
@@ -25,17 +25,17 @@ export function calculateNextBroadcastDate(anime: Anime): Date {
     return nextBroadcast;
 }
 
-export function calculateCurrentEpisode(anime: Anime): number {
+export function calculateCurrentEpisode(contents: Contents): number {
     const currentDate = new Date();
-    const broadcastStartDate = parseISO(anime.broadcastDate);
+    const broadcastStartDate = parseISO(contents.broadcastDate);
     const weeksSinceBroadcast = Math.floor(differenceInDays(currentDate, broadcastStartDate) / 7);
-    return Math.min(weeksSinceBroadcast + 1, anime.episodes);
+    return Math.min(weeksSinceBroadcast + 1, contents.episodes);
 }
 
-export function getAiringStatus(anime: Anime): AiringStatus {
+export function getAiringStatus(contents: Contents): AiringStatus {
     const currentDate = new Date();
-    const broadcastStartDate = parseISO(anime.broadcastDate);
-    const broadcastEndDate = addDays(broadcastStartDate, (anime.episodes - 1) * 7);
+    const broadcastStartDate = parseISO(contents.broadcastDate);
+    const broadcastEndDate = addDays(broadcastStartDate, (contents.episodes - 1) * 7);
 
     if (isBefore(currentDate, broadcastStartDate)) {
         return 'Upcoming';
@@ -46,9 +46,9 @@ export function getAiringStatus(anime: Anime): AiringStatus {
     }
 }
 
-export function getLastUpdateDate(anime: Anime): Date {
+export function getLastUpdateDate(contents: Contents): Date {
     const now = new Date();
-    const broadcastDate = parseISO(anime.broadcastDate);
+    const broadcastDate = parseISO(contents.broadcastDate);
 
     // 放送開始日が未来の場合は、その日付を返す
     if (isAfter(broadcastDate, now)) {
@@ -56,13 +56,13 @@ export function getLastUpdateDate(anime: Anime): Date {
     }
 
     // 放送が終了している場合は、最終エピソードの日付を返す
-    const lastEpisodeDate = addDays(broadcastDate, (anime.episodes - 1) * 7);
+    const lastEpisodeDate = addDays(broadcastDate, (contents.episodes - 1) * 7);
     if (isBefore(lastEpisodeDate, now)) {
         return lastEpisodeDate;
     }
 
     // 放送中の場合は、最新エピソードの日付を返す
     const daysSinceBroadcast = differenceInDays(now, broadcastDate);
-    const episodesAired = Math.min(Math.floor(daysSinceBroadcast / 7) + 1, anime.episodes);
+    const episodesAired = Math.min(Math.floor(daysSinceBroadcast / 7) + 1, contents.episodes);
     return addDays(broadcastDate, (episodesAired - 1) * 7);
 }
