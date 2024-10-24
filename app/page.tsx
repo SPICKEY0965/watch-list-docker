@@ -1,5 +1,5 @@
-import { WatchListComponent } from "@/components/WatchListComponent"
+import LoginPage from "@/app/login/page";
 
 export default function Page() {
-  return <WatchListComponent />
+  return <LoginPage />;
 }
