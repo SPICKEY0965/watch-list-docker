@@ -12,6 +12,7 @@ import { Contents, ContentsStatus, ContentsRating, AiringStatus } from './types'
 import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
 import { AddEditContentsDialog } from './AddEditContentsDialog';
 import { LoginComponent } from './LoginComponent';
+import { useRouter } from 'next/navigation';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
@@ -24,6 +25,7 @@ export function WatchListComponent() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
     const [token, setToken] = useState<string | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
@@ -70,6 +72,7 @@ export function WatchListComponent() {
         setToken(null);
         localStorage.removeItem('token');
         setContentsList([]);
+        router.push('/login');
     };
 
     const handleDeleteAccount = async () => {
