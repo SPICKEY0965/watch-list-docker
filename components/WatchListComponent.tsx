@@ -31,6 +31,8 @@ export function WatchListComponent() {
         const storedToken = localStorage.getItem('token');
         if (storedToken) {
             setToken(storedToken);
+        } else {
+            router.push('/login');
         }
     }, []);
 
@@ -282,10 +284,6 @@ export function WatchListComponent() {
             </PopoverContent>
         </Popover>
     );
-
-    if (!token) {
-        return <LoginComponent onLogin={handleLogin} />;
-    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
