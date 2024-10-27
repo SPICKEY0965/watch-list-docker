@@ -45,7 +45,7 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
       const endpoint = isRegistering ? '/api/register' : '/api/login';
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
       const response = await axios.post(
-        `http://192.168.1.210:5000${endpoint}`,
+        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         { username, password },
         {
           headers: {

@@ -44,7 +44,7 @@ export function WatchListComponent() {
 
     const fetchContentsList = async () => {
         try {
-            const response = await axios.get('http://192.168.1.210:5000/api/contents', {
+            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
                 headers: { Authorization: token }
             });
             const updatedContentsList = response.data.map((contents: Contents) => ({
@@ -65,11 +65,6 @@ export function WatchListComponent() {
         }
     };
 
-    const handleLogin = (newToken: string) => {
-        setToken(newToken);
-        localStorage.setItem('token', newToken);
-    };
-
     const handleLogout = () => {
         setToken(null);
         localStorage.removeItem('token');
@@ -79,7 +74,7 @@ export function WatchListComponent() {
 
     const handleDeleteAccount = async () => {
         try {
-            await axios.delete('http://192.168.1.210:5000/api/user', {
+            await axios.delete('${process.env.NEXT_PUBLIC_API_URL}/api/user', {
                 headers: { Authorization: token }
             });
             handleLogout();
@@ -90,7 +85,7 @@ export function WatchListComponent() {
 
     const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
         try {
-            const response = await axios.post('http://192.168.1.210:5000/api/contents', newContents, {
+            const response = await axios.post('${process.env.NEXT_PUBLIC_API_URL}/api/contents', newContents, {
                 headers: { Authorization: token }
             });
             setContentsList(prevList => sortContentsList([...prevList, response.data], sortBy));
@@ -101,7 +96,7 @@ export function WatchListComponent() {
 
     const handleEditContents = async (editedContents: Contents) => {
         try {
-            const response = await axios.put(`http://192.168.1.210:5000/api/contents/${editedContents.id}`, editedContents, {
+            const response = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/contents/${editedContents.id}`, editedContents, {
                 headers: { Authorization: token }
             });
             setContentsList(prevList => sortContentsList(prevList.map(contents => contents.id === editedContents.id ? response.data : contents), sortBy));
@@ -113,7 +108,7 @@ export function WatchListComponent() {
 
     const handleDeleteContents = async (id: number) => {
         try {
-            await axios.delete(`http://192.168.1.210:5000/api/contents/${id}`, {
+            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/contents/${id}`, {
                 headers: { Authorization: token }
             });
             setContentsList(prevList => sortContentsList(prevList.filter(contents => contents.id !== id), sortBy));
