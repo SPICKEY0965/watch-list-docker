@@ -16,23 +16,35 @@ import { useRouter } from 'next/navigation';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
-    const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>(localStorage.getItem('activeTab') as ContentsStatus || 'All');
-    const [activeRating, setActiveRating] = useState<ContentsRating | 'All'>((localStorage.getItem('activeRating') as ContentsRating) || 'All');
-    const [sortBy, setSortBy] = useState(localStorage.getItem('sortBy') || 'Recently Updated');
+    const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>('All');
+    const [activeRating, setActiveRating] = useState<ContentsRating | 'All'>('All');
+    const [sortBy, setSortBy] = useState('Recently Updated');
     const [contentsToEdit, setContentsToEdit] = useState<Contents | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
     const [token, setToken] = useState<string | null>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
-        } else {
-            router.push('/login');
+        if (typeof window !== 'undefined') {
+            const storedActiveTab = localStorage.getItem('activeTab') as ContentsStatus | 'All' || 'All';
+            const storedActiveRating = localStorage.getItem('activeRating') as ContentsRating | 'All' || 'All';
+            const storedSortBy = localStorage.getItem('sortBy') || 'Recently Updated';
+            const storedToken = localStorage.getItem('token');
+
+            setActiveTab(storedActiveTab);
+            setActiveRating(storedActiveRating);
+            setSortBy(storedSortBy);
+
+            if (storedToken) {
+                setToken(storedToken);
+            } else {
+                router.push('/login');
+            }
+            setIsLoaded(true);
         }
     }, []);
 
@@ -43,18 +55,24 @@ export function WatchListComponent() {
     }, [token]);
 
     useEffect(() => {
-        localStorage.setItem('activeTab', activeTab);
-    }, [activeTab]);
+        if (isLoaded) {
+            localStorage.setItem('activeTab', activeTab);
+        }
+    }, [activeTab, isLoaded]);
 
     useEffect(() => {
-        if (activeRating !== null) {
+        if (isLoaded && activeRating !== null) {
             localStorage.setItem('activeRating', activeRating);
         }
-    }, [activeRating]);
+    }, [activeRating, isLoaded]);
 
     useEffect(() => {
-        localStorage.setItem('sortBy', sortBy);
-    }, [sortBy]);
+        if (isLoaded) {
+            localStorage.setItem('sortBy', sortBy);
+        }
+    }, [sortBy, isLoaded]);
+
+    if (!isLoaded) return null;
 
     const fetchContentsList = async () => {
         try {
