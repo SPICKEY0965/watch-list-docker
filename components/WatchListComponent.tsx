@@ -16,9 +16,9 @@ import { useRouter } from 'next/navigation';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
-    const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>('All');
-    const [activeRating, setActiveRating] = useState<ContentsRating | 'All'>('All');
-    const [sortBy, setSortBy] = useState('Recently Updated');
+    const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>(localStorage.getItem('activeTab') as ContentsStatus || 'All');
+    const [activeRating, setActiveRating] = useState<ContentsRating | 'All'>((localStorage.getItem('activeRating') as ContentsRating) || 'All');
+    const [sortBy, setSortBy] = useState(localStorage.getItem('sortBy') || 'Recently Updated');
     const [contentsToEdit, setContentsToEdit] = useState<Contents | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -41,6 +41,20 @@ export function WatchListComponent() {
             fetchContentsList();
         }
     }, [token]);
+
+    useEffect(() => {
+        localStorage.setItem('activeTab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeRating !== null) {
+            localStorage.setItem('activeRating', activeRating);
+        }
+    }, [activeRating]);
+
+    useEffect(() => {
+        localStorage.setItem('sortBy', sortBy);
+    }, [sortBy]);
 
     const fetchContentsList = async () => {
         try {
