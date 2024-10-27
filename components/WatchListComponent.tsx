@@ -106,7 +106,7 @@ export function WatchListComponent() {
 
     const handleDeleteAccount = async () => {
         try {
-            await axios.delete('${process.env.NEXT_PUBLIC_API_URL}/api/user', {
+            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/user`, {
                 headers: { Authorization: token }
             });
             handleLogout();
@@ -117,7 +117,7 @@ export function WatchListComponent() {
 
     const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
         try {
-            const response = await axios.post('${process.env.NEXT_PUBLIC_API_URL}/api/contents', newContents, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, newContents, {
                 headers: { Authorization: token }
             });
             setContentsList(prevList => sortContentsList([...prevList, response.data], sortBy));
