@@ -27,6 +27,22 @@ export function WatchListComponent() {
     const [token, setToken] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
+    const apiClient = axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL,
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    apiClient.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                handleLogout();
+            }
+            return Promise.reject(error);
+        }
+    );
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -77,7 +93,7 @@ export function WatchListComponent() {
     const fetchContentsList = async () => {
         try {
             const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
-                headers: { Authorization: token }
+                headers: { Authorization: `Bearer ${token}` }
             });
             const updatedContentsList = response.data.map((contents: Contents) => ({
                 ...contents,
@@ -86,10 +102,12 @@ export function WatchListComponent() {
             setContentsList(sortContentsList(updatedContentsList, sortBy));
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                console.error('Error fetching contents list', error.message);
-                if (error.response && error.response.status === 403) {
-                    // Token is invalid or expired
+                if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                    // Token is invalid or expired, handle logout silently
                     handleLogout();
+                } else {
+                    // Minimal logging for unexpected errors
+                    console.warn('An error occurred while fetching content data.');
                 }
             } else {
                 console.error('Unexpected error', error);

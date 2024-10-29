@@ -22,7 +22,17 @@ const verifyToken = (req, res, next) => {
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(500).json({ error: 'Failed to authenticate token.' });
+            if (err.name === 'TokenExpiredError') {
+                // トークンの有効期限が切れた場合の処理
+                return res.status(401).json({ error: 'Token has expired.' });
+            } else if (err.name === 'JsonWebTokenError') {
+                // トークンが無効な場合の処理
+                return res.status(401).json({ error: 'Invalid token.' });
+            } else {
+                // その他の予期しないエラーをキャッチ
+                console.error('Token verification error:', err);
+                return res.status(500).json({ error: 'Failed to authenticate token.' });
+            }
         }
 
         // データベースでユーザーの存在を確認
@@ -40,5 +50,6 @@ const verifyToken = (req, res, next) => {
         });
     });
 };
+
 
 module.exports = verifyToken;
