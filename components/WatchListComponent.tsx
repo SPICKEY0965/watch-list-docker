@@ -27,6 +27,7 @@ export function WatchListComponent() {
     const [token, setToken] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
+    const [isOnline, setIsOnline] = useState(true);
     const apiClient = axios.create({
         baseURL: process.env.NEXT_PUBLIC_API_URL,
         headers: {
@@ -45,6 +46,21 @@ export function WatchListComponent() {
     );
 
     useEffect(() => {
+        // Check online status
+        setIsOnline(navigator.onLine);
+
+        // Add event listeners for online/offline status
+        window.addEventListener('online', () => setIsOnline(true));
+        window.addEventListener('offline', () => setIsOnline(false));
+
+        // Clean up event listeners
+        return () => {
+            window.removeEventListener('online', () => setIsOnline(true));
+            window.removeEventListener('offline', () => setIsOnline(false));
+        };
+    }, []);
+
+    useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedActiveTab = localStorage.getItem('activeTab') as ContentsStatus | 'All' || 'All';
             const storedActiveRating = localStorage.getItem('activeRating') as ContentsRating | 'All' || 'All';
@@ -61,6 +77,11 @@ export function WatchListComponent() {
                 router.push('/login');
             }
             setIsLoaded(true);
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => console.log('Service Worker registered with scope:', registration.scope))
+                    .catch((error) => console.error('Service Worker registration failed:', error));
+            }
         }
     }, []);
 
@@ -92,6 +113,16 @@ export function WatchListComponent() {
 
     const fetchContentsList = async () => {
         try {
+            if (!isOnline) {
+                // If offline, try to get data from IndexedDB
+                const db = await openDatabase();
+                const storedData = await getDataFromIndexedDB(db);
+                if (storedData) {
+                    setContentsList(sortContentsList(storedData, sortBy));
+                    return;
+                }
+            }
+
             const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -100,6 +131,10 @@ export function WatchListComponent() {
                 currentEpisode: calculateCurrentEpisode(contents)
             }));
             setContentsList(sortContentsList(updatedContentsList, sortBy));
+
+            // Store data in IndexedDB for offline use
+            const db = await openDatabase();
+            await storeDataInIndexedDB(db, updatedContentsList);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.response && (error.response.status === 401 || error.response.status === 403)) {
@@ -332,6 +367,11 @@ export function WatchListComponent() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
+            {!isOnline && (
+                <div className="bg-yellow-500 text-black p-2 text-center mb-4">
+                    You are currently offline. Some features may be limited.
+                </div>
+            )}
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-4 md:mb-6">
                     <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
@@ -509,4 +549,35 @@ export function WatchListComponent() {
             </Dialog>
         </div>
     );
+    async function openDatabase() {
+        return new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('WatchListDB', 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result;
+                db.createObjectStore('contents', { keyPath: 'id' });
+            };
+        });
+    }
+
+    async function storeDataInIndexedDB(db: IDBDatabase, data: Contents[]) {
+        return new Promise<void>((resolve, reject) => {
+            const transaction = db.transaction('contents', 'readwrite');
+            const store = transaction.objectStore('contents');
+            data.forEach(item => store.put(item));
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
+
+    async function getDataFromIndexedDB(db: IDBDatabase) {
+        return new Promise<Contents[]>((resolve, reject) => {
+            const transaction = db.transaction('contents', 'readonly');
+            const store = transaction.objectStore('contents');
+            const request = store.getAll();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        });
+    }
 }
