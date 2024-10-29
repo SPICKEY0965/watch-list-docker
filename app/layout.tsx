@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'WatchLis',
+  title: 'WatchList',
   description: 'ウォッチリストを管理するためのWEBアプリ',
   manifest: '/manifest.json',
 }
