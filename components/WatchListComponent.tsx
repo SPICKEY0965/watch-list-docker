@@ -11,7 +11,7 @@ import axios from 'axios';
 import { Contents, ContentsStatus, ContentsRating, AiringStatus } from './types';
 import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
 import { AddEditContentsDialog } from './AddEditContentsDialog';
-import { LoginComponent } from './LoginComponent';
+import { convertToUniversalLink } from './convert_universalURL';
 import { useRouter } from 'next/navigation';
 
 export function WatchListComponent() {
@@ -112,9 +112,15 @@ export function WatchListComponent() {
     if (!isLoaded) return null;
 
     const fetchContentsList = async () => {
+        // iOSまたはAndroidデバイスかどうかを判定するヘルパー関数
+        const isMobile = (): boolean => {
+            const userAgent = navigator.userAgent || navigator.vendor;
+            return /android|iphone|ipad|ipod/i.test(userAgent);  // iOSまたはAndroidならtrueを返す
+        };
+
         try {
             if (!isOnline) {
-                // If offline, try to get data from IndexedDB
+                // オフラインの場合、IndexedDBからデータ取得
                 const db = await openDatabase();
                 const storedData = await getDataFromIndexedDB(db);
                 if (storedData) {
@@ -126,22 +132,27 @@ export function WatchListComponent() {
             const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const updatedContentsList = response.data.map((contents: Contents) => ({
-                ...contents,
-                currentEpisode: calculateCurrentEpisode(contents)
-            }));
+
+            const updatedContentsList = response.data.map((contents: Contents) => {
+                const universalUrl = convertToUniversalLink(contents.streamingUrl, isMobile());
+                return {
+                    ...contents,
+                    streamingUrl: universalUrl,
+                    currentEpisode: calculateCurrentEpisode(contents)
+                };
+            });
+
             setContentsList(sortContentsList(updatedContentsList, sortBy));
 
-            // Store data in IndexedDB for offline use
+            // オフライン用データをIndexedDBに保存
             const db = await openDatabase();
             await storeDataInIndexedDB(db, updatedContentsList);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                    // Token is invalid or expired, handle logout silently
+                    // 無効または期限切れのトークン
                     handleLogout();
                 } else {
-                    // Minimal logging for unexpected errors
                     console.warn('An error occurred while fetching content data.');
                 }
             } else {
@@ -149,6 +160,7 @@ export function WatchListComponent() {
             }
         }
     };
+
 
     const handleLogout = () => {
         setToken(null);
