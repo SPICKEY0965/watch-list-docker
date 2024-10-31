@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Heart, MoreVertical, Plus, Trash2, Edit, Info, Play, Filter, Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import axios from 'axios';
-import { Contents, ContentsStatus, ContentsRating, AiringStatus } from './types';
-import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
+import { Edit, Filter, Info, MoreVertical, Play, Plus, Settings, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { AddEditContentsDialog } from './AddEditContentsDialog';
 import { convertToUniversalLink } from './convert_universalURL';
-import { useRouter } from 'next/navigation';
+import { Contents, ContentsRating, ContentsStatus } from './types';
+import { calculateCurrentEpisode, getAiringStatus, getLastUpdateDate } from './utils';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
@@ -22,7 +22,6 @@ export function WatchListComponent() {
     const [contentsToEdit, setContentsToEdit] = useState<Contents | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
     const [token, setToken] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -46,14 +45,11 @@ export function WatchListComponent() {
     );
 
     useEffect(() => {
-        // Check online status
         setIsOnline(navigator.onLine);
 
-        // Add event listeners for online/offline status
         window.addEventListener('online', () => setIsOnline(true));
         window.addEventListener('offline', () => setIsOnline(false));
 
-        // Clean up event listeners
         return () => {
             window.removeEventListener('online', () => setIsOnline(true));
             window.removeEventListener('offline', () => setIsOnline(false));
@@ -112,15 +108,8 @@ export function WatchListComponent() {
     if (!isLoaded) return null;
 
     const fetchContentsList = async () => {
-        // iOSまたはAndroidデバイスかどうかを判定するヘルパー関数
-        const isMobile = (): boolean => {
-            const userAgent = navigator.userAgent || navigator.vendor;
-            return /android|iphone|ipad|ipod/i.test(userAgent);  // iOSまたはAndroidならtrueを返す
-        };
-
         try {
             if (!isOnline) {
-                // オフラインの場合、IndexedDBからデータ取得
                 const db = await openDatabase();
                 const storedData = await getDataFromIndexedDB(db);
                 if (storedData) {
@@ -133,8 +122,10 @@ export function WatchListComponent() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
+            const userAgent = navigator.userAgent || navigator.userAgent;
+
             const updatedContentsList = response.data.map((contents: Contents) => {
-                const universalUrl = convertToUniversalLink(contents.streamingUrl, isMobile());
+                const universalUrl = convertToUniversalLink(contents.streamingUrl, userAgent);
                 return {
                     ...contents,
                     streamingUrl: universalUrl,
@@ -144,13 +135,11 @@ export function WatchListComponent() {
 
             setContentsList(sortContentsList(updatedContentsList, sortBy));
 
-            // オフライン用データをIndexedDBに保存
             const db = await openDatabase();
             await storeDataInIndexedDB(db, updatedContentsList);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                    // 無効または期限切れのトークン
                     handleLogout();
                 } else {
                     console.warn('An error occurred while fetching content data.');
@@ -160,7 +149,6 @@ export function WatchListComponent() {
             }
         }
     };
-
 
     const handleLogout = () => {
         setToken(null);

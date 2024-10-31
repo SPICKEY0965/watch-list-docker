@@ -17,8 +17,8 @@ export function calculateNextBroadcastDate(contents: Contents): Date {
     } else if (broadcastDay < currentDayOfWeek) {
         nextBroadcast = addDays(currentDate, 7 - (currentDayOfWeek - broadcastDay));
     } else {
-        // If it's the same day, check if we've passed the broadcast time
-        // Assuming broadcast is at 00:00, so if it's the same day, we'll set it to next week
+        // 同じ日の場合は、放送時間を過ぎていないか確認します
+        // 放送は 00:00 と仮定し、同じ日の場合は来週に設定します
         nextBroadcast = addDays(currentDate, 7);
     }
 
