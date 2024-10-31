@@ -369,7 +369,7 @@ export function WatchListComponent() {
         <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
             {!isOnline && (
                 <div className="bg-yellow-500 text-black p-2 text-center mb-4">
-                    You are currently offline. Some features may be limited.
+                    現在オフラインです。一部の機能が制限されている可能性があります。
                 </div>
             )}
             <div className="max-w-6xl mx-auto">
