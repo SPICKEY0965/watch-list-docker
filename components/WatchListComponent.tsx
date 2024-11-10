@@ -44,35 +44,45 @@ export function WatchListComponent() {
         }
     );
 
+    // ネットワーク状態を監視し、オフライン・オンラインの変更時に状態を更新
     useEffect(() => {
-        setIsOnline(navigator.onLine);
+        const updateOnlineStatus = (status: boolean) => setIsOnline(status);
 
-        window.addEventListener('online', () => setIsOnline(true));
-        window.addEventListener('offline', () => setIsOnline(false));
+        setIsOnline(navigator.onLine);
+        window.addEventListener('online', () => updateOnlineStatus(true));
+        window.addEventListener('offline', () => updateOnlineStatus(false));
 
         return () => {
-            window.removeEventListener('online', () => setIsOnline(true));
-            window.removeEventListener('offline', () => setIsOnline(false));
+            window.removeEventListener('online', () => updateOnlineStatus(true));
+            window.removeEventListener('offline', () => updateOnlineStatus(false));
         };
     }, []);
 
+    // アプリの初期データをローカルストレージから読み込み、初期化する
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const storedActiveTab = localStorage.getItem('activeTab') as ContentsStatus | 'All' || 'All';
-            const storedActiveRating = localStorage.getItem('activeRating') as ContentsRating | 'All' || 'All';
+            // 各状態をローカルストレージから読み込む
+            const storedActiveTab = (localStorage.getItem('activeTab') as ContentsStatus | 'All') || 'All';
+            const storedActiveRating = localStorage.getItem('activeRating') === 'null' ? null : (localStorage.getItem('activeRating') as ContentsRating | 'All') || 'All';
             const storedSortBy = localStorage.getItem('sortBy') || 'Recently Updated';
             const storedToken = localStorage.getItem('token');
 
+            // 状態をセット
             setActiveTab(storedActiveTab);
             setActiveRating(storedActiveRating);
             setSortBy(storedSortBy);
 
+            // トークンの有無を確認し、なければログインページにリダイレクト
             if (storedToken) {
                 setToken(storedToken);
             } else {
                 router.push('/login');
             }
+
+            // アプリがロード済みであることを設定
             setIsLoaded(true);
+
+            // Service Workerの登録
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then((registration) => console.log('Service Worker registered with scope:', registration.scope))
@@ -81,30 +91,23 @@ export function WatchListComponent() {
         }
     }, []);
 
+    // ローカルストレージへの保存：activeTab, activeRating, sortByの状態が変更されるたびに保存
+    useEffect(() => {
+        if (isLoaded) {
+            localStorage.setItem('activeTab', activeTab);
+            localStorage.setItem('activeRating', activeRating === null ? 'null' : activeRating);
+            localStorage.setItem('sortBy', sortBy);
+        }
+    }, [activeTab, activeRating, sortBy, isLoaded]);
+
+    // トークンが設定されたときにコンテンツリストを取得
     useEffect(() => {
         if (token) {
             fetchContentsList();
         }
     }, [token]);
 
-    useEffect(() => {
-        if (isLoaded) {
-            localStorage.setItem('activeTab', activeTab);
-        }
-    }, [activeTab, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded && activeRating !== null) {
-            localStorage.setItem('activeRating', activeRating);
-        }
-    }, [activeRating, isLoaded]);
-
-    useEffect(() => {
-        if (isLoaded) {
-            localStorage.setItem('sortBy', sortBy);
-        }
-    }, [sortBy, isLoaded]);
-
+    // 初期ロードが完了するまでコンポーネントのレンダリングを停止
     if (!isLoaded) return null;
 
     const fetchContentsList = async () => {
@@ -427,13 +430,16 @@ export function WatchListComponent() {
                         <div>
                             <h3 className="mb-2 text-sm font-medium">評価</h3>
                             <div className="grid grid-cols-3 gap-2">
-                                {['All', 'SS', 'S', 'A', 'B', 'C'].map((rating) => (
+                                {['All', 'SS', 'S', 'A', 'B', 'C', '未評価'].map((rating) => (
                                     <Button
                                         key={rating}
-                                        className={`${activeRating === rating ? 'bg-[#a3d3ca] text-white border-blue-500' : 'bg-gray-800 text-white border-gray-700'}`}
-                                        variant={activeRating === rating ? "secondary" : "outline"}
+                                        className={`${(activeRating === rating || (rating === '未評価' && activeRating === null))
+                                            ? 'bg-[#a3d3ca] text-white border-blue-500'
+                                            : 'bg-gray-800 text-white border-gray-700'
+                                            }`}
+                                        variant={activeRating === rating || (rating === '未評価' && activeRating === null) ? "secondary" : "outline"}
                                         size="sm"
-                                        onClick={() => setActiveRating(rating as ContentsRating | 'All')}
+                                        onClick={() => setActiveRating(rating === '未評価' ? null : rating as ContentsRating | 'All')}
                                     >
                                         {rating === 'All' ? 'すべて' : rating}
                                     </Button>
@@ -503,12 +509,12 @@ export function WatchListComponent() {
                 </div>
 
                 <div className="hidden md:flex gap-2 md:gap-4 mb-6 flex-wrap">
-                    {['All', 'SS', 'S', 'A', 'B', 'C'].map((rating) => (
+                    {['All', 'SS', 'S', 'A', 'B', 'C', '未評価'].map((rating) => (
                         <Button
                             key={rating}
-                            variant={activeRating === rating ? "secondary" : "ghost"}
+                            variant={(activeRating === rating || (rating === '未評価' && activeRating === null)) ? "secondary" : "ghost"}
                             size="sm"
-                            onClick={() => setActiveRating(rating as ContentsRating | 'All')}
+                            onClick={() => setActiveRating(rating === '未評価' ? null : rating as ContentsRating | 'All')}
                         >
                             {rating === 'All' ? 'すべて' : rating}
                         </Button>

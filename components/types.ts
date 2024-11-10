@@ -1,5 +1,5 @@
 export type ContentsStatus = 'Watching' | 'On-hold' | 'Plan to watch' | 'Dropped' | 'Completed'
-export type ContentsRating = 'SS' | 'S' | 'A' | 'B' | 'C' | null
+export type ContentsRating = 'SS' | 'S' | 'A' | 'B' | 'C' | '未評価' | null
 export type AiringStatus = 'Upcoming' | 'Airing' | 'Finished Airing'
 
 export interface Contents {
