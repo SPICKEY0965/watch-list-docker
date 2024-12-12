@@ -1,21 +1,17 @@
-export type AnimeStatus = 'Watching' | 'On-hold' | 'Plan to watch' | 'Dropped' | 'Completed'
-export type AnimeRating = 'SS' | 'S' | 'A' | 'B' | 'C' | null
+export type ContentsStatus = 'Watching' | 'On-hold' | 'Plan to watch' | 'Dropped' | 'Completed'
+export type ContentsRating = 'SS' | 'S' | 'A' | 'B' | 'C' | '未評価' | null
 export type AiringStatus = 'Upcoming' | 'Airing' | 'Finished Airing'
 
-export interface Anime {
+export interface Contents {
     id: number;
     title: string;
-    type: string;
     duration: string;
     episodes: number;
     currentEpisode: number;
     image: string;
-    rating: AnimeRating;
-    synopsis: string;
-    japaneseTitle: string;
+    rating: ContentsRating;
     broadcastDate: string;
     updateDay: string;
     streamingUrl: string;
-    status: AnimeStatus;
-    genres: string[];
+    status: ContentsStatus;
 }
