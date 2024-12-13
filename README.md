@@ -1,47 +1,78 @@
 # 超簡易ウォッチリストサーバー
 
-このプロジェクトは、Dockerを使用したウォッチリストサーバーのサンプルです。
+このプロジェクトは、Dockerを利用して簡単に構築可能なウォッチリストサーバーのサンプルです。
+
+---
 
 ## 必要条件
 
-このプロジェクトを実行するには、以下のソフトウェアが必要です。
+このプロジェクトを実行するためには、以下のソフトウェアが必要です。
+- Docker
+- Docker Compose
 
 ### Dockerのインストール
 
 #### Windowsの場合
 
-+ [Docker Desktopのインストール手順](https://docs.docker.com/desktop/install/windows-install/)に従って、Docker Desktopをインストールしてください。
+- [Docker Desktopのインストール手順](https://docs.docker.com/desktop/install/windows-install/) に従ってDocker Desktopをインストールしてください。
 
 #### Ubuntuの場合
 
-+ [Docker Engineのインストール手順](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)に従って、Docker Engineをインストールしてください。
+- [Docker Engineのインストール手順](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) に従ってDocker Engineをインストールしてください。
+
+---
 
 ## セットアップ
 
 1. リポジトリをクローンします。
 
    ```bash
-   git clone https://github.com/SPICKEY0965/Watch-list.git
-   cd Watch-List
-    ```
-2. Docker Composeを実行します。
+   git clone https://github.com/SPICKEY0965/watch-list-docker.git
 
-    **注意**: アクションは**root**権限で実行する必要があります。
+   cd watch-list-docker
+   ```
 
-    ```bach
-    docker compose up -d --build
-    ```
+2. 環境変数を設定します。
+
+   - **APIサーバーのアドレス**を設定
+
+     ```properties
+     # ./.env
+     NEXT_PUBLIC_API_URL=https://api.example.com:port
+     ```
+
+   - **JWT認証のキー**を設定
+
+     ```properties
+     # ./backend/.env
+     JWT_SECRET=your_secret_key
+     ```
+
+3. Docker Composeを実行します。
+
+   **注意**: このコマンドは「**root権限**」で実行する必要があります。
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+---
 
 ## 使用方法
 
-アプリケーションが正常に起動したら、ブラウザで http://serverIP:3000 にアクセスして、アプリケーションを利用できます。
+アプリケーションが正常に起動したら、ブラウザで [http://example.com:3000](http://serverIP:3000) にアクセスして、アプリを利用できます。
 
-※ アクセスできない場合3000, 5000のポートがファイヤーウォールの設定で遮断されていないか確認してください。
+PWAに対応しており、アクセス後ホーム画面に追加すると以下の機能が利用可能になります。
+- オフライン使用
+- ストリーミングアプリへの直接画面転移
+
+**注意**: アクセスできない場合は、3000、または5000ポートがファイヤーウォールの設定で無効化されていないかを確認してください。
+
+---
 
 ## 注意事項
 
-+ 必要に応じて、docker-compose.ymlファイルの設定を変更してください。
-+ Dockerが正常に動作するためには、Hyper-VやWSL 2（Windowsの場合）が有効になっていることを確認してください。
-+ このリポジトリは適当に作成されており、セキュリティについては考慮されていません。いかなる損害についても当方は一切の責任を追わないことをご留意ください。(プライベートネットワーク内で遊ぶことを推奨します。)
-+ Git初心者なためかなり醜いリポジトリとなっておりますがご容赦ください...
-+ なにか不都合があればこのリポジトリは即刻削除します。
+- 必要に応じて、`docker-compose.yml`ファイルの設定を変更してください。
+- Dockerが正常に動作するためには、Hyper-VやWSL 2が有効化されていることを確認してください。
+- このリポジトリは適当に作成されており、セキュリティについては考慮されていません。いかなる損害についても当方は一切の責任を追わないことをご留意ください。(プライベートネットワーク内での使用を推奨します。)
+- Git初心者なためかなり醜いリポジトリとなっておりますがご容赦ください...
