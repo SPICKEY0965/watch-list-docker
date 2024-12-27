@@ -1,0 +1,272 @@
+openapi: 3.0.0
+info:
+  title: 視聴リストAPI
+  version: 1.0.0
+  description: 視聴リスト管理のためのAPIです。ユーザー認証、コンテンツのCRUD操作を提供します。
+servers:
+  - url: http://localhost:5000/api
+tags:
+  - name: Auth
+    description: 認証関連エンドポイント
+  - name: Contents
+    description: コンテンツ管理エンドポイント
+
+paths:
+  /register:
+    post:
+      summary: 新規ユーザー登録
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: ユーザー名
+                password:
+                  type: string
+                  description: パスワード
+              required:
+                - username
+                - password
+      responses:
+        '201':
+          description: ユーザー登録成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: ユーザー登録が成功しました
+        '400':
+          description: ユーザー名とパスワードが必要です
+        '409':
+          description: ユーザー名が存在します
+        '500':
+          description: サーバーエラー
+
+
+  /login:
+    post:
+      summary: ユーザーログイン
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: ユーザー名
+                password:
+                  type: string
+                  description: パスワード
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: JWTトークン
+        '401':
+          description: ユーザー名またはパスワードが無効です
+        '404':
+          description: ユーザーが見つかりません
+        '500':
+          description: サーバーエラー
+
+  /contents:
+    get:
+      summary: コンテンツ一覧取得
+      tags:
+        - Contents
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: コンテンツ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Content' # コンテンツスキーマを参照
+        '401':
+          description: 認証エラー
+        '500':
+          description: サーバーエラー
+
+    post:
+      summary: 新規コンテンツ追加
+      tags:
+        - Contents
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Content'
+      responses:
+        '201':
+          description: コンテンツ追加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '400':
+          description: タイトルが必要です
+        '401':
+          description: 認証エラー
+        '500':
+          description: サーバーエラー
+
+  /contents/{id}:
+    put:
+      summary: コンテンツ更新
+      tags:
+        - Contents
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: 更新するコンテンツのID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Content'
+      responses:
+        '200':
+          description: コンテンツ更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '400':
+          description: タイトルが必要です
+        '401':
+          description: 認証エラー
+        '404':
+          description: コンテンツが見つかりません、または更新権限がありません
+        '500':
+          description: サーバーエラー
+
+    delete:
+      summary: コンテンツ削除
+      tags:
+        - Contents
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: 削除するコンテンツのID
+      responses:
+        '204':
+          description: コンテンツ削除成功
+        '401':
+          description: 認証エラー
+        '404':
+          description: コンテンツが見つかりません、または削除権限がありません
+        '500':
+          description: サーバーエラー
+
+  /user:
+    delete:
+      summary: ユーザーアカウント削除
+      tags:
+        - Auth
+        - Contents
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '204':
+          description: ユーザー削除成功
+        '401':
+          description: 認証エラー
+        '404':
+          description: ユーザーが見つかりません
+        '500':
+          description: サーバーエラー
+
+
+components:
+  schemas:
+    Content:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          description: タイトル
+        duration:
+          type: integer
+          description: 総再生時間(分)
+        episodes:
+          type: integer
+          description: 総エピソード数
+        currentEpisode:
+          type: integer
+          description: 現在視聴中のエピソード
+        image:
+          type: string
+          description: 画像URL
+        broadcastDate:
+          type: string
+          format: date
+          description: 放送開始日
+        updateDay:
+          type: string
+          format: date
+          description: 更新日
+        streamingUrl:
+          type: string
+          description: ストリーミングURL
+        status:
+          type: string
+          description: 視聴状況
+        rating:
+          type: integer
+          description: 評価 (1-5)
+      required:
+        - title
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
