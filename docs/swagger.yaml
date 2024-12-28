@@ -1,15 +1,19 @@
 openapi: 3.0.0
 info:
-  title: 視聴リストAPI
-  version: 1.0.0
-  description: 視聴リスト管理のためのAPIです。ユーザー認証、コンテンツのCRUD操作を提供します。
+  title: watch-list-docker
+  version: 2.0.0
+  description: watch-list管理のためのAPIです。ユーザー認証、コンテンツのCRUD操作を提供します。
 servers:
   - url: http://localhost:5000/api
 tags:
   - name: Auth
     description: 認証関連エンドポイント
+  - name: List
+    description: |
+      contentsテーブルとwatch_listテーブルの両方に対して操作を行います。
   - name: Contents
-    description: コンテンツ管理エンドポイント
+    description: |
+      contentsテーブルに対して直接操作を行います。
 
 paths:
   /register:
@@ -34,7 +38,7 @@ paths:
                 - username
                 - password
       responses:
-        '201':
+        "201":
           description: ユーザー登録成功
           content:
             application/json:
@@ -44,13 +48,12 @@ paths:
                   message:
                     type: string
                     example: ユーザー登録が成功しました
-        '400':
+        "400":
           description: ユーザー名とパスワードが必要です
-        '409':
+        "409":
           description: ユーザー名が存在します
-        '500':
+        "500":
           description: サーバーエラー
-
 
   /login:
     post:
@@ -74,7 +77,7 @@ paths:
                 - username
                 - password
       responses:
-        '200':
+        "200":
           description: ログイン成功
           content:
             application/json:
@@ -87,11 +90,125 @@ paths:
                   token:
                     type: string
                     description: JWTトークン
-        '401':
+        "401":
           description: ユーザー名またはパスワードが無効です
-        '404':
+        "404":
           description: ユーザーが見つかりません
-        '500':
+        "500":
+          description: サーバーエラー
+  /users:
+    delete:
+      summary: ユーザーアカウント削除
+      tags:
+        - Auth
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "204":
+          description: ユーザー削除成功
+        "401":
+          description: 認証エラー
+        "404":
+          description: ユーザーが見つかりません
+        "500":
+          description: サーバーエラー
+
+  /lists:
+    get:
+      summary: コンテンツ一覧取得
+      tags:
+        - List
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: コンテンツ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/watch_list" # コンテンツスキーマを参照
+        "401":
+          description: 認証エラー
+        "500":
+          description: サーバーエラー
+    post:
+      summary: 新規コンテンツ追加
+      description: (全体のcontentsに保存され、かつユーザーのwatchlistにも追加されます。)
+      tags:
+        - List
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/contents"
+      responses:
+        "201":
+          description: コンテンツ追加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/watch_list"
+        "400":
+          description: タイトルが必要です
+        "401":
+          description: 認証エラー
+        "500":
+          description: サーバーエラー
+  /lists/{id}:
+    post:
+      summary: コンテンツ追加
+      description: 全体のcontentsに保存され、かつユーザーのwatchlistにも追加されます。
+      tags:
+        - List
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: 追加するコンテンツのid
+      responses:
+        "201":
+          description: コンテンツ追加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/watch_list"
+        "400":
+          description: タイトルが必要です
+        "401":
+          description: 認証エラー
+        "500":
+          description: サーバーエラー
+    delete:
+      summary: コンテンツ削除
+      description: ユーザーのwatchlistからのみコンテンツが削除されます。
+      tags:
+        - List
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: 削除するコンテンツのID
+      responses:
+        "204":
+          description: コンテンツ削除成功
+        "401":
+          description: 認証エラー
+        "404":
+          description: コンテンツが見つかりません、または削除権限がありません
+        "500":
           description: サーバーエラー
 
   /contents:
@@ -102,17 +219,17 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: コンテンツ一覧
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Content' # コンテンツスキーマを参照
-        '401':
+                  $ref: "#/components/schemas/contents" # コンテンツスキーマを参照
+        "401":
           description: 認証エラー
-        '500':
+        "500":
           description: サーバーエラー
 
     post:
@@ -126,19 +243,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Content'
+              $ref: "#/components/schemas/contents"
       responses:
-        '201':
+        "201":
           description: コンテンツ追加成功
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Content'
-        '400':
+                $ref: "#/components/schemas/contents"
+        "400":
           description: タイトルが必要です
-        '401':
+        "401":
           description: 認証エラー
-        '500':
+        "500":
           description: サーバーエラー
 
   /contents/{id}:
@@ -160,21 +277,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Content'
+              $ref: "#/components/schemas/contents"
       responses:
-        '200':
+        "200":
           description: コンテンツ更新成功
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Content'
-        '400':
+                $ref: "#/components/schemas/contents"
+        "400":
           description: タイトルが必要です
-        '401':
+        "401":
           description: 認証エラー
-        '404':
+        "404":
           description: コンテンツが見つかりません、または更新権限がありません
-        '500':
+        "500":
           description: サーバーエラー
 
     delete:
@@ -191,37 +308,18 @@ paths:
           required: true
           description: 削除するコンテンツのID
       responses:
-        '204':
+        "204":
           description: コンテンツ削除成功
-        '401':
+        "401":
           description: 認証エラー
-        '404':
+        "404":
           description: コンテンツが見つかりません、または削除権限がありません
-        '500':
+        "500":
           description: サーバーエラー
-
-  /user:
-    delete:
-      summary: ユーザーアカウント削除
-      tags:
-        - Auth
-        - Contents
-      security:
-        - ApiKeyAuth: []
-      responses:
-        '204':
-          description: ユーザー削除成功
-        '401':
-          description: 認証エラー
-        '404':
-          description: ユーザーが見つかりません
-        '500':
-          description: サーバーエラー
-
 
 components:
   schemas:
-    Content:
+    watch_list:
       type: object
       properties:
         id:
@@ -229,21 +327,35 @@ components:
           readOnly: true
         user_id:
           type: integer
+          description: ユーザーID
+        content_id:
+          type: integer
+          description: コンテンツID
+      required:
+        - user_id
+        - content_id
+    contents:
+      type: object
+      properties:
+        id:
+          type: integer
           readOnly: true
         title:
           type: string
+          maxLength: 100
           description: タイトル
-        duration:
-          type: integer
-          description: 総再生時間(分)
         episodes:
           type: integer
+          minimum: 0
           description: 総エピソード数
         currentEpisode:
           type: integer
+          minimum: 0
           description: 現在視聴中のエピソード
         image:
           type: string
+          maxLength: 255
+          format: uri
           description: 画像URL
         broadcastDate:
           type: string
@@ -252,16 +364,23 @@ components:
         updateDay:
           type: string
           format: date
-          description: 更新日
+          description: 更新日 (Update date)
         streamingUrl:
           type: string
-          description: ストリーミングURL
+          maxLength: 255
+          format: uri
+          description: ストリーミングURL (Streaming URL)
         status:
           type: string
-          description: 視聴状況
+          description: 視聴状況 (Viewing status)
         rating:
+          type: string
+          enum: ["SS", "S", "A", "B", "C", ""]
+          description: 評価 (Rating)
+        is_private:
           type: integer
-          description: 評価 (1-5)
+          enum: [0, 1]
+          description: "プライベートコンテンツのフラグ（0 = 公開, 1 = 非公開）(Private content flag: 0 = Public, 1 = Private)"
       required:
         - title
 

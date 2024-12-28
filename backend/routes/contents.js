@@ -1,82 +1,101 @@
 const express = require('express');
 const { db } = require('../db');
 const auth = require('../middleware/auth');
+const isPrivateCheck = require('../middleware/private');
 
 const router = express.Router();
 
 // Get contents list (protected route)
 router.get('/contents', auth, (req, res) => {
-    db.all('SELECT * FROM contents WHERE user_id = ?', [req.userId], (err, rows) => {
+    db.all('SELECT * FROM contents WHERE is_private = 0', (err, rows) => {
         if (err) {
-            console.error('Error fetching contents:', err);
-            return res.status(500).json({ error: 'Database error occurred.' });
+            console.error('Error fetching contents:', err.message);
+            return res.status(500).json({ error: 'An error occurred while fetching contents from the database.' });
         }
-
-        res.json(rows);
+        res.status(200).json(rows);
     });
 });
 
 // Add new content (protected route)
 router.post('/contents', auth, (req, res) => {
-    const { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
 
     const query = `
-        INSERT INTO contents (user_id, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO contents (title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private, created_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
-    db.run(query, [req.userId, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating], function (err) {
-        if (err) {
-            console.error('Error inserting new content:', err);
-            return res.status(500).json({ error: 'Database error occurred.' });
+    db.run(
+        query,
+        [title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private],
+        function (err) {
+            if (err) {
+                console.error('Error inserting new content:', err);
+                return res.status(500).json({ error: 'Database error occurred.' });
+            }
+            const insertedContent = {
+                id: this.lastID,
+                title,
+                episodes,
+                currentEpisode,
+                image,
+                broadcastDate,
+                updateDay,
+                streamingUrl,
+                status,
+                rating,
+                is_private,
+                created_date: new Date().toISOString(),
+            };
+            res.status(201).json(insertedContent);
         }
-        const insertedContent = { id: this.lastID, user_id: req.userId, title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating };
-        res.status(201).json(insertedContent);
-    });
+    );
 });
 
 // Update content (protected route)
-router.put('/contents/:id', auth, (req, res) => {
+router.put('/contents/:id', auth, isPrivateCheck, (req, res) => {
     const { id } = req.params;
-    const { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating } = req.body;
+    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
 
-    const updatedContent = { title, duration, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating };
+    const updatedContent = { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private };
 
     const query = `
-    UPDATE contents
-    SET title = ?, duration = ?, episodes = ?, currentEpisode = ?, image = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, status = ?, rating = ?
-    WHERE id = ? AND user_id = ?
-`;
-    db.run(query, [...Object.values(updatedContent), id, req.userId], function (err) {
+        UPDATE contents
+        SET title = ?, episodes = ?, currentEpisode = ?, image = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, status = ?, rating = ?, is_private = ?, updated_date = datetime('now')
+        WHERE id = ?
+    `;
+    db.run(query, [...Object.values(updatedContent), id], function (err) {
         if (err) {
             console.error('Error updating content:', err);
             return res.status(500).json({ error: 'Database error occurred.' });
         }
         if (this.changes === 0) {
-            return res.status(404).json({ error: 'Content not found or you do not have permission to update it.' });
+            return res.status(404).json({ error: 'Content not found.' });
         }
-        const responseContent = { ...updatedContent, id, user_id: req.userId };
+        const responseContent = { ...updatedContent, id, updated_date: new Date().toISOString() };
         res.json(responseContent);
     });
 });
 
 // Delete content (protected route)
-router.delete('/contents/:id', auth, (req, res) => {
+router.delete('/contents/:id', auth, isPrivateCheck, (req, res) => {
     const { id } = req.params;
-    db.run('DELETE FROM contents WHERE id = ? AND user_id = ?', [id, req.userId], function (err) {
+    const query = 'DELETE FROM contents WHERE id = ?';
+
+    db.run(query, id, function (err) {
         if (err) {
             console.error('Error deleting content:', err);
             return res.status(500).json({ error: 'Database error occurred.' });
         }
         if (this.changes === 0) {
-            return res.status(404).json({ error: 'Content not found or you do not have permission to delete it.' });
+            return res.status(404).json({ error: 'Content not found.' });
         }
         res.sendStatus(204);
     });

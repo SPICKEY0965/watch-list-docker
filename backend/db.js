@@ -14,25 +14,39 @@ function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE CHECK(length(username) <= 50),  -- ユーザー名の文字数を50文字以下に制限
-                password TEXT
+                password TEXT,
+                created_date TEXT,
+                last_login_date TEXT DEFAULT 0
+            )
+        `);
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS watch_list (
+                user_id INTEGER,
+                content_id INTEGER,
+                created_date TEXT,
+                PRIMARY KEY (user_id, content_id),
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (content_id) REFERENCES contents(id)
             )
         `);
 
         db.run(`
             CREATE TABLE IF NOT EXISTS contents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
                 title TEXT CHECK(length(title) <= 100),              -- タイトルの文字数を100文字以下に制限
-                duration INTEGER CHECK(duration > 0),                -- durationは正の値
                 episodes INTEGER CHECK(episodes >= 0),               -- episodesは0以上
-                currentEpisode INTEGER CHECK(currentEpisode >= 0),   -- currentEpisodeは0以上
+                currentEpisode INTEGER, -- CHECK(currentEpisode >= 0),   -- currentEpisodeは0以上
                 image TEXT CHECK(length(image) <= 255),              -- 画像URLの文字数を255文字以下に制限
                 broadcastDate TEXT,
                 updateDay TEXT,
                 streamingUrl TEXT CHECK(length(streamingUrl) <= 255),-- URLの文字数を255文字以下に制限
                 status TEXT,
                 rating TEXT CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', '')),
-                FOREIGN KEY (user_id) REFERENCES users(id)
+                is_private INTEGER DEFAULT 0 CHECK(is_private IN (0, 1)), -- プライベートコンテンツのフラグ（0 = 公開, 1 = 非公開）
+                created_date TEXT,
+                updated_date TEXT DEFAULT 0,
+                deleted_date TEXT DEFAULT 0
             )
         `);
     });

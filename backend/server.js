@@ -9,6 +9,7 @@ require('dotenv').config();
 const { initializeDatabase } = require('./db');
 const authRoutes = require('./routes/auth');
 const contentsRoutes = require('./routes/contents');
+const listsRoutse = require('./routes/lists')
 
 const app = express();
 const PORT = 5000;
@@ -34,6 +35,7 @@ initializeDatabase();
 // Routes
 app.use('/api', authRoutes);
 app.use('/api', contentsRoutes);
+app.use('/api', listsRoutse);
 
 // Start the server
 app.listen(PORT, () => {

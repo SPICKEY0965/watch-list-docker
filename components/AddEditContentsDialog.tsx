@@ -17,7 +17,6 @@ interface AddEditContentsDialogProps {
 export function AddEditContentsDialog({ onAddContents, onEditContents, contentsToEdit, isOpen, onOpenChange }: AddEditContentsDialogProps) {
     const initialContentsState: Omit<Contents, 'id'> = {
         title: '',
-        duration: '',
         episodes: 12,
         currentEpisode: 0,
         image: '',
@@ -25,7 +24,8 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
         broadcastDate: '',
         updateDay: '',
         streamingUrl: '',
-        status: 'Watching'
+        status: 'Watching',
+        is_private: '0'
     };
 
     const [contents, setContents] = useState<Omit<Contents, 'id'>>(initialContentsState);
@@ -180,6 +180,24 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                                 <SelectContent>
                                     {['SS', 'S', 'A', 'B', 'C'].map((rating) => (
                                         <SelectItem key={rating} value={rating}>{rating}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="share" className="text-sm font-medium leading-none">
+                                シェア
+                            </Label>
+                            <Select value={contents.is_private || '1'} onValueChange={(value: '0' | '1') => setContents({ ...contents, is_private: value })}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="非公開" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[
+                                        ['0', '公開'],
+                                        ['1', '非公開']
+                                    ].map(([value, label]) => (
+                                        <SelectItem key={value} value={value}>{label}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

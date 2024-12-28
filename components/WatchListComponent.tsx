@@ -121,7 +121,7 @@ export function WatchListComponent() {
                 }
             }
 
-            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
+            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/lists`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -173,7 +173,7 @@ export function WatchListComponent() {
 
     const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, newContents, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/lists`, newContents, {
                 headers: { Authorization: token }
             });
             setContentsList(prevList => sortContentsList([...prevList, response.data], sortBy));
@@ -285,6 +285,12 @@ export function WatchListComponent() {
                                     'Dropped': '視聴中止',
                                     'Completed': '視聴完了'
                                 }[contents.status]
+                            }</p>
+                            <p className="text-sm"><strong>シェア:</strong> {
+                                {
+                                    '1': '非公開',
+                                    '0': '公開',
+                                }[contents.is_private]
                             }</p>
                             <p className="text-sm"><strong>評価:</strong> {contents.rating || '未評価'}</p>
                             <Button className="w-full" asChild>
