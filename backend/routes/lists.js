@@ -24,7 +24,7 @@ router.get('/lists', auth, (req, res) => {
 
 // 新規コンテンツの追加とウォッチリストへの登録
 router.post('/lists', auth, (req, res) => {
-    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private } = req.body;
+    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private, status, rating } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
@@ -36,11 +36,11 @@ router.post('/lists', auth, (req, res) => {
 
         // contentsテーブルに追加
         const contentQuery = `
-            INSERT INTO contents (title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private, created_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO contents (title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         `;
 
-        db.run(contentQuery, [title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private], function (err) {
+        db.run(contentQuery, [title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private], function (err) {
             if (err) {
                 console.error('Error inserting content:', err);
                 db.run('ROLLBACK');
@@ -51,11 +51,11 @@ router.post('/lists', auth, (req, res) => {
 
             // watch_listテーブルに追加
             const watchListQuery = `
-                INSERT INTO watch_list (user_id, content_id, created_date)
-                VALUES (?, ?, datetime('now'))
+                INSERT INTO watch_list (user_id, content_id, status, rating, created_date)
+                VALUES (?, ?, ?, ?, datetime('now'))
             `;
 
-            db.run(watchListQuery, [req.userId, contentId], function (err) {
+            db.run(watchListQuery, [req.userId, contentId, status, rating], function (err) {
                 if (err) {
                     console.error('Error inserting into watch list:', err);
                     db.run('ROLLBACK');
@@ -86,13 +86,18 @@ router.post('/lists', auth, (req, res) => {
 // 既存コンテンツをウォッチリストに追加
 router.post('/lists/:id', auth, (req, res) => {
     const { id } = req.params;
+    const { status, rating } = req.body;
+
+    if (!status || !rating) {
+        return res.status(400).json({ error: 'Status and rating are required.' });
+    }
 
     const query = `
-        INSERT INTO watch_list (user_id, content_id, created_date)
-        VALUES (?, ?, datetime('now'))
+        INSERT INTO watch_list (user_id, content_id, status, rating, created_date)
+        VALUES (?, ?, ?, ?, datetime('now'))
     `;
 
-    db.run(query, [req.userId, id], function (err) {
+    db.run(query, [req.userId, id, status, rating], function (err) {
         if (err) {
             if (err.code === 'SQLITE_CONSTRAINT') {
                 return res.status(409).json({ error: 'Content already in watch list.' });

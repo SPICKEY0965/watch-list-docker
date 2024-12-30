@@ -25,7 +25,7 @@ router.post('/contents', auth, (req, res) => {
     }
 
     const query = `
-        INSERT INTO contents (title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private, created_date)
+        INSERT INTO contents (title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     db.run(
@@ -45,8 +45,6 @@ router.post('/contents', auth, (req, res) => {
                 broadcastDate,
                 updateDay,
                 streamingUrl,
-                status,
-                rating,
                 is_private,
                 created_date: new Date().toISOString(),
             };
@@ -58,17 +56,17 @@ router.post('/contents', auth, (req, res) => {
 // Update content (protected route)
 router.put('/contents/:id', auth, isPrivateCheck, (req, res) => {
     const { id } = req.params;
-    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private } = req.body;
+    const { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private } = req.body;
 
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
 
-    const updatedContent = { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, status, rating, is_private };
+    const updatedContent = { title, episodes, currentEpisode, image, broadcastDate, updateDay, streamingUrl, is_private };
 
     const query = `
         UPDATE contents
-        SET title = ?, episodes = ?, currentEpisode = ?, image = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, status = ?, rating = ?, is_private = ?, updated_date = datetime('now')
+        SET title = ?, episodes = ?, currentEpisode = ?, image = ?, broadcastDate = ?, updateDay = ?, streamingUrl = ?, is_private = ?, updated_date = datetime('now')
         WHERE id = ?
     `;
     db.run(query, [...Object.values(updatedContent), id], function (err) {

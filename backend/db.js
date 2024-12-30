@@ -24,6 +24,8 @@ function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS watch_list (
                 user_id INTEGER,
                 content_id INTEGER,
+                status TEXT,
+                rating TEXT CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', '')),
                 created_date TEXT,
                 PRIMARY KEY (user_id, content_id),
                 FOREIGN KEY (user_id) REFERENCES users(id),
@@ -41,8 +43,6 @@ function initializeDatabase() {
                 broadcastDate TEXT,
                 updateDay TEXT,
                 streamingUrl TEXT CHECK(length(streamingUrl) <= 255),-- URLの文字数を255文字以下に制限
-                status TEXT,
-                rating TEXT CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', '')),
                 is_private INTEGER DEFAULT 0 CHECK(is_private IN (0, 1)), -- プライベートコンテンツのフラグ（0 = 公開, 1 = 非公開）
                 created_date TEXT,
                 updated_date TEXT DEFAULT 0,
