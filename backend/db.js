@@ -23,7 +23,6 @@ function initializeDatabase() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 title TEXT CHECK(length(title) <= 100),              -- タイトルの文字数を100文字以下に制限
-                duration INTEGER CHECK(duration > 0),                -- durationは正の値
                 episodes INTEGER CHECK(episodes >= 0),               -- episodesは0以上
                 currentEpisode INTEGER CHECK(currentEpisode >= 0),   -- currentEpisodeは0以上
                 image TEXT CHECK(length(image) <= 255),              -- 画像URLの文字数を255文字以下に制限
@@ -31,7 +30,7 @@ function initializeDatabase() {
                 updateDay TEXT,
                 streamingUrl TEXT CHECK(length(streamingUrl) <= 255),-- URLの文字数を255文字以下に制限
                 status TEXT,
-                rating TEXT CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', '')),
+                rating TEXT DEFAULT 'unrated' CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', 'unrated'),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         `);
