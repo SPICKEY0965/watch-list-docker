@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { ContentsRating, ContentsStatus } from "@/components/types"
-import { Filter, Plus, Settings, List } from "lucide-react"
+import { Filter, Plus, Settings } from "lucide-react"
 
 //
 // ヘッダーコンポーネント（モバイルとデスクトップ）
@@ -103,7 +103,7 @@ export default function Header({
             {/* デスクトップ版 */}
             <div className="hidden md:block">
                 {/* ヘッダー上部 */}
-                <div className="container mx-auto px-6 py-4 flex justify-between items-center border-b border-gray-800">
+                <div className=" mx-auto px-6 py-4 flex justify-between items-center border-b border-gray-800">
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         ウォッチリスト
                     </h1>
@@ -131,47 +131,37 @@ export default function Header({
                     </div>
                 </div>
 
-                {/* フィルターエリア */}
-                <div className="container mx-auto px-6 py-4">
-                    <div className="flex flex-col gap-4">
-                        {/* ステータスフィルター */}
-                        <div className="flex flex-wrap gap-2">
-                            {statusTabs.map(([value, label]) => (
-                                <Button
-                                    key={value}
-                                    variant={activeTab === value ? "secondary" : "outline"}
-                                    size="sm"
-                                    onClick={() => setActiveTab(value as ContentsStatus | "All")}
-                                    className={
-                                        activeTab === value
-                                            ? "bg-primary text-white"
-                                            : "bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
-                                    }
-                                >
-                                    {label}
-                                </Button>
-                            ))}
-                        </div>
-
-                        {/* 評価フィルター */}
-                        <div className="flex flex-wrap gap-2">
-                            {ratingFilters.map((rating) => (
-                                <Button
-                                    key={rating}
-                                    variant={activeRating === rating ? "secondary" : "outline"}
-                                    size="sm"
-                                    onClick={() => setActiveRating(rating as ContentsRating | "All")}
-                                    className={
-                                        activeRating === rating
-                                            ? "bg-primary text-white"
-                                            : "bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
-                                    }
-                                >
-                                    {rating === "All" ? "すべて" : rating}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
+                {/* デスクトップ版評価フィルター */}
+                <div className="flex gap-2 md:gap-4 flex-wrap mb-2">
+                    {[
+                        ['All', 'すべて'],
+                        ['Watching', '視聴中'],
+                        ['On-hold', '保留中'],
+                        ['Plan to watch', '視聴予定'],
+                        ['Dropped', '視聴中止'],
+                        ['Completed', '視聴完了']
+                    ].map(([value, label]) => (
+                        <Button
+                            key={value}
+                            variant={activeTab === value ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => setActiveTab(value as ContentsStatus | 'All')}
+                        >
+                            {label}
+                        </Button>
+                    ))}
+                </div>
+                <div className="hidden md:flex gap-2 md:gap-4 mb-6 flex-wrap">
+                    {['All', 'SS', 'S', 'A', 'B', 'C', 'unrated'].map((rating) => (
+                        <Button
+                            key={rating}
+                            variant={activeRating === rating ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => setActiveRating(rating as ContentsRating | 'All')}
+                        >
+                            {rating === 'All' ? 'すべて' : rating === 'unrated' ? '未評価' : rating}
+                        </Button>
+                    ))}
                 </div>
             </div>
         </div>

@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Contents, ContentsRating, ContentsStatus } from '@/components/types';
-import { getAiringStatus } from "@/components/utils";
-import { useState } from "react";
+import { ContentsRating, ContentsStatus } from '@/components/types';
 
 //
 // フィルターメニュー（モバイル版）

@@ -213,23 +213,43 @@ export function WatchListComponent() {
     // コンテンツリストのソート処理
     //
     const sortContentsList = useCallback((list: Contents[], criteria: string): Contents[] => {
-        return [...list].sort((a, b) => {
-            switch (criteria) {
-                case 'Recently Updated':
-                    return getLastUpdateDate(b).getTime() - getLastUpdateDate(a).getTime();
-                case 'Name A-Z':
-                    return a.title.localeCompare(b.title);
-                case 'Released Date':
-                    return new Date(b.broadcastDate).getTime() - new Date(a.broadcastDate).getTime();
-                case 'Rating': {
-                    const ratingOrder = ['SS', 'S', 'A', 'B', 'C', 'unrated'];
-                    const getRatingValue = (rating: string | null) => rating === null ? 'unrated' : rating;
-                    return ratingOrder.indexOf(getRatingValue(a.rating)) - ratingOrder.indexOf(getRatingValue(b.rating));
-                }
-                default:
-                    return 0;
-            }
-        });
+        // コピーを作成
+        const listCopy = [...list];
+
+        // 基準ごとの比較関数（comparator）を生成する
+        let comparator: (a: Contents, b: Contents) => number;
+
+        if (criteria === 'Recently Updated') {
+            comparator = (a, b) => {
+                // getLastUpdateDate は必要な計算をカプセル化していると仮定
+                const aTime = getLastUpdateDate(a).getTime();
+                const bTime = getLastUpdateDate(b).getTime();
+                return bTime - aTime;
+            };
+        } else if (criteria === 'Name A-Z') {
+            comparator = (a, b) => a.title.localeCompare(b.title);
+        } else if (criteria === 'Released Date') {
+            comparator = (a, b) => Date.parse(b.broadcastDate) - Date.parse(a.broadcastDate);
+        } else if (criteria === 'Rating') {
+            // ルックアップ用のオブジェクトを事前に定義
+            const ratingPriority: { [key: string]: number } = {
+                'SS': 0,
+                'S': 1,
+                'A': 2,
+                'B': 3,
+                'C': 4,
+                'unrated': 5
+            };
+            comparator = (a, b) => {
+                const aRating = a.rating ?? 'unrated';
+                const bRating = b.rating ?? 'unrated';
+                return ratingPriority[aRating] - ratingPriority[bRating];
+            };
+        } else {
+            comparator = () => 0;
+        }
+
+        return listCopy.sort(comparator);
     }, []);
 
     //
@@ -242,10 +262,11 @@ export function WatchListComponent() {
 
     const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/lists`, newContents, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, newContents, {
                 headers: { Authorization: token }
             });
             setContentsList(prev => sortContentsList([...prev, response.data], sortBy));
+            fetchContentsList();
         } catch (error) {
             console.error('コンテンツ追加時にエラーが発生しました。', error);
         }
@@ -258,6 +279,7 @@ export function WatchListComponent() {
             });
             setContentsList(prev => sortContentsList(prev.map(item => item.id === editedContents.id ? response.data : item), sortBy));
             setContentsToEdit(null);
+            fetchContentsList();
         } catch (error) {
             console.error('コンテンツ編集時にエラーが発生しました。', error);
         }
@@ -285,9 +307,13 @@ export function WatchListComponent() {
     //
     // フィルタリング（タブ、評価）
     //
-    const filteredContentsList = contentsList
-        .filter(item => activeTab === 'All' || item.status === activeTab)
-        .filter(item => activeRating === 'All' || item.rating === activeRating);
+    let filteredContentsList = contentsList;
+    if (activeTab !== 'All' || activeRating !== 'All') {
+        filteredContentsList = contentsList.filter(item =>
+            (activeTab === 'All' || item.status === activeTab) &&
+            (activeRating === 'All' || item.rating === activeRating)
+        );
+    }
 
     //
     // グローバルイベント（アカウント削除ダイアログを開くためのカスタムイベント）
@@ -307,7 +333,7 @@ export function WatchListComponent() {
                     現在オフラインです。一部の機能が制限されている可能性があります。
                 </div>
             )}
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-6xl mx-auto">
                 <Header
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}

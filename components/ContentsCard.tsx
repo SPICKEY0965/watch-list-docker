@@ -276,4 +276,3 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
         </div>
     )
 }
-
