@@ -6,7 +6,7 @@ const fs = require('fs').promises;
 const { downloadImage, isExternalImage } = require('../utils/imageDownload');
 
 const router = express.Router();
-const contentDir = path.join(__dirname, '../contents');
+const imageDir = path.join(__dirname, '../images');
 
 // GET /contents (protected route)
 router.get('/contents', auth, (req, res) => {
@@ -27,9 +27,9 @@ router.get('/images/:hashDir1/:hashDir2/:filename', async (req, res) => {
     const { hashDir1, hashDir2, filename } = req.params;
 
     // 絶対パスを生成
-    const imagePath = path.join(contentDir, hashDir1, hashDir2, filename);
+    const imagePath = path.join(imageDir, hashDir1, hashDir2, filename);
     const resolvedImagePath = path.resolve(imagePath);
-    const resolvedBaseDir = path.resolve(contentDir);
+    const resolvedBaseDir = path.resolve(imageDir);
 
     // セキュリティ対策：リクエストされたファイルがIMAGE_DIR内にあるかチェック
     if (!resolvedImagePath.startsWith(resolvedBaseDir)) {

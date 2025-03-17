@@ -1,11 +1,11 @@
 const path = require('path');
 const fs = require('fs').promises;
-const fetch = require('node-fetch');
+const fetch = require('node-fetch-cjs');
 const crypto = require('crypto');
 require('dotenv').config();
 const { sanitizeImage } = require('./imageSanitizer');
 
-const imageDir = path.join(imageDir, '../images');
+const imageDir = path.join(__dirname, '../images');
 
 // 必要なディレクトリを作成
 async function ensureDirectories() {
