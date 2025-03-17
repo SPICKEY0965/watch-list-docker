@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs').promises;
-const fetch = require('node-fetch-cjs');
+const fetch = require('node-fetch');
 const crypto = require('crypto');
 require('dotenv').config();
 const { sanitizeImage } = require('./imageSanitizer');
