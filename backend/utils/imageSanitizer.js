@@ -16,7 +16,7 @@ async function sanitizeImage(buffer, outputFormat = 'jpeg') {
         }
 
         const sanitizedBuffer = await image
-            .toFormat(outputFormat, { quality: 80 })
+            .toFormat(outputFormat, { quality: 60 })
             .withMetadata({})
             .toBuffer();
         return sanitizedBuffer;

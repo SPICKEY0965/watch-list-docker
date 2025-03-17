@@ -10,6 +10,9 @@ const imageDir = path.join(__dirname, '../images');
 
 // GET /contents (protected route)
 router.get('/contents', auth, (req, res) => {
+    const protocol = req.protocol;
+    const host = req.get('host');
+
     db.all(
         'SELECT * FROM contents WHERE user_id = ?',
         [req.userId],
@@ -18,7 +21,14 @@ router.get('/contents', auth, (req, res) => {
                 console.error('Error fetching contents:', err);
                 return res.status(500).json({ error: 'Database error occurred.' });
             }
-            res.json(rows);
+            const transformedRows = rows.map(row => {
+                if (row.image && !row.image.startsWith("data:image/") && !row.image.startsWith("http")) {
+                    row.image = `${protocol}://${host}/api/images/${row.image}`;
+                }
+                return row;
+            });
+
+            res.json(transformedRows);
         }
     );
 });
@@ -37,10 +47,7 @@ router.get('/images/:hashDir1/:hashDir2/:filename', async (req, res) => {
     }
 
     try {
-        // ファイルの存在確認
         await fs.access(resolvedImagePath, fs.constants.F_OK);
-
-        // サーバ上に保存された画像ファイルを送信
         res.sendFile(resolvedImagePath, err => {
             if (err) {
                 console.error('ファイル送信エラー:', err);
@@ -74,13 +81,10 @@ router.post('/contents', auth, async (req, res) => {
     }
 
     try {
-        let imageUrl = null;
+        let filename = null;
         if (image && isExternalImage) {
             const result = await downloadImage(image);
-            const filename = result.relativePhysicalPath;
-            const protocol = req.protocol;
-            const host = req.get('host');
-            imageUrl = `${protocol}://${host}/api/images/${filename}`;
+            filename = result.relativePhysicalPath;
         }
 
         const query = `
@@ -96,7 +100,7 @@ router.post('/contents', auth, async (req, res) => {
                 title,
                 episodes,
                 currentEpisode,
-                imageUrl,
+                filename,
                 broadcastDate,
                 updateDay,
                 streamingUrl,
@@ -115,7 +119,7 @@ router.post('/contents', auth, async (req, res) => {
                     title,
                     episodes,
                     currentEpisode,
-                    image: imageUrl,
+                    image: filename,
                     broadcastDate,
                     updateDay,
                     streamingUrl,

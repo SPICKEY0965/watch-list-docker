@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const os = require('os');
 
 const { initializeDatabase } = require('./db');
 const authRoutes = require('./routes/auth');
@@ -28,6 +29,22 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
+function getLocalIpAddress() {
+    const interfaces = os.networkInterfaces();
+    for (const name in interfaces) {
+        for (const iface of interfaces[name]) {
+            // IPv4 かつ内部アドレスではない場合
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    // 見つからなかった場合は 'localhost' を返す
+    return 'localhost';
+}
+
+const ipAddress = getLocalIpAddress();
+
 // Initialize database
 initializeDatabase();
 
@@ -37,5 +54,5 @@ app.use('/api', contentsRoutes);
 
 // Start the server
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://${ipAddress}:${PORT}`);
 });
