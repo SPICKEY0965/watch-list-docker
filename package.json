@@ -1,6 +1,6 @@
 {
-  "name": "watch-list-v7",
-  "version": "0.1.0",
+  "name": "watch-list-docker-frontend",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
