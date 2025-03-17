@@ -30,7 +30,7 @@ function initializeDatabase() {
                 updateDay TEXT,
                 streamingUrl TEXT CHECK(length(streamingUrl) <= 255),-- URLの文字数を255文字以下に制限
                 status TEXT,
-                rating TEXT DEFAULT 'unrated' CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', 'unrated'),
+                rating TEXT DEFAULT 'unrated' CHECK (rating IN ('SS', 'S', 'A', 'B', 'C', 'unrated')),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         `);

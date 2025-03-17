@@ -37,3 +37,6 @@ Thumbs.db
 *.temp
 
 *.db
+
+# Images
+backend/images/
