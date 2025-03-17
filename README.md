@@ -34,18 +34,20 @@
 
 2. 環境変数を設定します。
 
-   - **APIサーバーのアドレス**を設定
+   - **バックエンドサーバーのアドレス**を設定
 
      ```properties
      # ./.env
      NEXT_PUBLIC_API_URL=https://api.example.com:port
      ```
 
-   - **JWT認証のキー**を設定
+   - **バックエンドの環境変数**を設定
 
      ```properties
      # ./backend/.env
      JWT_SECRET=your_secret_key
+     INTERNAL_DOMAINS=your_server_domain
+     WHITE_LIST=trasted_download_image_server
      ```
 
 3. Docker Composeを実行します。
@@ -63,7 +65,6 @@
 アプリケーションが正常に起動したら、ブラウザで [http://example.com:3000](http://serverIP:3000) にアクセスして、アプリを利用できます。
 
 PWAに対応しており、アクセス後ホーム画面に追加すると以下の機能が利用可能になります。
-- オフライン使用
 - ストリーミングアプリへの直接画面転移
 
 **注意**: アクセスできない場合は、3000、または5000ポートがファイヤーウォールの設定で無効化されていないかを確認してください。
