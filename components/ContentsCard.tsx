@@ -14,6 +14,7 @@ import { getAiringStatus } from "@/components/utils"
 import { Edit, Info, MoreVertical, Play, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { convertToUniversalLink } from '@/components/convert_universalURL';
 
 //
 // コンテンツカード（個別の表示部分）
@@ -160,7 +161,7 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
 
                                 <Button className="w-full" variant="default">
                                     <a
-                                        href={contents.streamingUrl}
+                                        href={convertToUniversalLink(contents.streamingUrl, navigator.userAgent)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center w-full"
@@ -269,10 +270,10 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                 variant="default"
                 size="icon"
                 className="absolute bottom-4 right-4 h-9 w-9 rounded-full shadow-lg"
-                onClick={() => window.open(contents.streamingUrl, "_blank")}
+                onClick={() => window.open(convertToUniversalLink(contents.streamingUrl, navigator.userAgent), "_blank")}
             >
                 <Play className="h-4 w-4" />
             </Button>
-        </div>
+        </div >
     )
 }

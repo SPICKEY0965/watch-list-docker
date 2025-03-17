@@ -178,10 +178,8 @@ export function WatchListComponent() {
             });
 
             const updatedContentsList: Contents[] = response.data.map((contents: Contents) => {
-                const universalUrl = convertToUniversalLink(contents.streamingUrl, navigator.userAgent);
                 return {
                     ...contents,
-                    streamingUrl: universalUrl,
                     currentEpisode: calculateCurrentEpisode(contents)
                 };
             });
