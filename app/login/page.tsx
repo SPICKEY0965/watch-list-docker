@@ -4,7 +4,7 @@ import { LoginComponent } from "@/components/LoginComponent";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';  // useRouterをインポート
 
-export default function Page() {
+export default function LoginPage() {
     const [token, setToken] = useState<string | null>(null);
     const router = useRouter();  // useRouterフックを使用
 

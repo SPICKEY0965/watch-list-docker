@@ -1,5 +1,5 @@
 import { WatchListComponent } from "@/components/WatchListComponent"
 
-export default function Page() {
+export default function HomePage() {
     return <WatchListComponent />
 }
