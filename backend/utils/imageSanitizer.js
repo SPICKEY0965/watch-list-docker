@@ -1,4 +1,4 @@
-const sharp = require('sharp');
+import sharp from 'sharp';
 
 /**
  * 画像をサニタイズ（再エンコードし、メタデータを除去）する関数
@@ -25,6 +25,6 @@ async function sanitizeImage(buffer, outputFormat = 'jpeg') {
     }
 }
 
-module.exports = {
+export {
     sanitizeImage,
 };

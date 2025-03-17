@@ -1,7 +1,8 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { db } = require('../db');
+import express from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { db } from '../db.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -49,7 +50,7 @@ router.post('/login', (req, res) => {
 });
 
 // Delete user account (protected route)
-router.delete('/user', require('../middleware/auth'), (req, res) => {
+router.delete('/user', auth, (req, res) => {
     const userId = req.userId;
 
     db.serialize(() => {
@@ -87,4 +88,4 @@ router.delete('/user', require('../middleware/auth'), (req, res) => {
     });
 });
 
-module.exports = router;
+export default router;

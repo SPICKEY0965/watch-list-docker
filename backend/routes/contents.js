@@ -1,11 +1,15 @@
-const express = require('express');
-const { db } = require('../db');
-const auth = require('../middleware/auth');
-const path = require('path');
-const fs = require('fs').promises;
-const { downloadImage, isExternalImage } = require('../utils/imageDownload');
+import express from 'express';
+import { db } from '../db.js';
+import auth from '../middleware/auth.js';
+import path from 'path';
+import { dirname } from 'path';
+import * as fs from 'node:fs/promises';
+import { downloadImage, isExternalImage } from '../utils/imageDownload.js';
+import { fileURLToPath } from 'url';
 
 const router = express.Router();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const imageDir = path.join(__dirname, '../images');
 
 // GET /contents (protected route)
@@ -226,4 +230,4 @@ router.delete('/contents/:id', auth, (req, res) => {
     );
 });
 
-module.exports = router;
+export default router;

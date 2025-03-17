@@ -1,15 +1,20 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const morgan = require('morgan');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
-const os = require('os');
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import morgan from 'morgan';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import 'dotenv/config';
+import os from 'os';
 
-const { initializeDatabase } = require('./db');
-const authRoutes = require('./routes/auth');
-const contentsRoutes = require('./routes/contents');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+import { initializeDatabase } from './db.js';
+import authRoutes from './routes/auth.js';
+import contentsRoutes from './routes/contents.js';
 
 const app = express();
 const PORT = 5000;

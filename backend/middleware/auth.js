@@ -1,9 +1,9 @@
-const jwt = require('jsonwebtoken');
-const { db } = require('../db');
+import jwt from 'jsonwebtoken';
+import { db } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-const verifyToken = (req, res, next) => {
+const auth = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     if (!authHeader) {
         return res.status(403).json({ error: 'No token provided.' });
@@ -52,4 +52,4 @@ const verifyToken = (req, res, next) => {
 };
 
 
-module.exports = verifyToken;
+export default auth;

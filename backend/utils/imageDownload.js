@@ -1,10 +1,13 @@
-const path = require('path');
-const fs = require('fs').promises;
-const fetch = require('node-fetch');
-const crypto = require('crypto');
-require('dotenv').config();
-const { sanitizeImage } = require('./imageSanitizer');
+import path from 'path';
+import { dirname } from 'path';
+import * as fs from 'node:fs/promises';
+import crypto from 'crypto';
+import 'dotenv/config';
+import { sanitizeImage } from './imageSanitizer.js';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const imageDir = path.join(__dirname, '../images');
 
 // 必要なディレクトリを作成
@@ -256,7 +259,7 @@ async function findImageByHash(contentHash, extension = null) {
     }
 }
 
-module.exports = {
+export {
     downloadImage,
     sanitizeUrl,
     isExternalImage,
