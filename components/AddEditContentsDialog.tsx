@@ -3,11 +3,31 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import React, { useEffect, useState } from 'react';
-import { Contents, ContentsRating, ContentsStatus } from './types';
+import React, { useEffect, useState } from "react";
+import { Contents, ContentsRating, ContentsStatus } from "./types";
+import axios from 'axios';
+
+async function fetchImageUrlFromVideoUrl(videoUrl: string): Promise<string | null> {
+    if (!videoUrl) {
+        console.error("動画URLが指定されていません。");
+        return null;
+    }
+
+    try {
+        const response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/images`,
+            { url: videoUrl },
+        );
+        console.log(response);
+        return response.data.imageUrl || null;
+    } catch (error) {
+        console.error("画像URL取得エラー:", error);
+        return null;
+    }
+}
 
 interface AddEditContentsDialogProps {
-    onAddContents: (newContents: Omit<Contents, 'id'>) => void;
+    onAddContents: (newContents: Omit<Contents, "id">) => void;
     onEditContents: (editedContents: Contents) => void;
     contentsToEdit: Contents | null;
     isOpen: boolean;
@@ -15,28 +35,29 @@ interface AddEditContentsDialogProps {
 }
 
 export function AddEditContentsDialog({ onAddContents, onEditContents, contentsToEdit, isOpen, onOpenChange }: AddEditContentsDialogProps) {
-    const initialContentsState: Omit<Contents, 'id'> = {
-        title: '',
-        duration: '',
+    const initialContentsState: Omit<Contents, "id"> = {
+        title: "",
+        duration: "",
         episodes: 12,
         currentEpisode: 0,
-        image: '',
+        image: "",
         rating: null,
-        broadcastDate: '',
-        updateDay: '',
-        streamingUrl: '',
-        status: 'Watching'
+        broadcastDate: "",
+        updateDay: "",
+        streamingUrl: "",
+        status: "Watching",
     };
 
-    const [contents, setContents] = useState<Omit<Contents, 'id'>>(initialContentsState);
+    const [contents, setContents] = useState<Omit<Contents, "id">>(initialContentsState);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (contentsToEdit) {
-            setContents(contentsToEdit)
+            setContents(contentsToEdit);
         } else {
             setContents(initialContentsState);
         }
-    }, [contentsToEdit])
+    }, [contentsToEdit]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,8 +70,23 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
             setContents(initialContentsState);
             onOpenChange(false);
         } catch (error) {
-            console.error('Error saving contents:', error);
-            alert('コンテンツの保存中にエラーが発生しました。再試行してください。');
+            console.error("Error saving contents:", error);
+            alert("コンテンツの保存中にエラーが発生しました。再試行してください。");
+        }
+    };
+
+    const handleFetchImage = async () => {
+        if (!contents.streamingUrl) {
+            alert("動画URLを入力してください。");
+            return;
+        }
+        setLoading(true);
+        const imageUrl = await fetchImageUrlFromVideoUrl(contents.streamingUrl);
+        setLoading(false);
+        if (imageUrl) {
+            setContents({ ...contents, image: imageUrl });
+        } else {
+            alert("画像の取得に失敗しました。");
         }
     };
 
@@ -58,9 +94,9 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] w-[95vw] max-w-[95vw] sm:w-full max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-xl">{contentsToEdit ? '編集' : '追加'}</DialogTitle>
+                    <DialogTitle className="text-xl">{contentsToEdit ? "編集" : "追加"}</DialogTitle>
                     <DialogDescription className="text-sm">
-                        ウォッチリストに{contentsToEdit ? '編集' : '追加'}したいコンテンツの詳細を入力してください。
+                        ウォッチリストに{contentsToEdit ? "編集" : "追加"}したいコンテンツの詳細を入力してください。
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col justify-between gap-4 py-4 h-full">
@@ -128,13 +164,18 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                             <Label htmlFor="streamingUrl" className="text-sm font-medium leading-none">
                                 動画URL
                             </Label>
-                            <Input
-                                id="streamingUrl"
-                                type="url"
-                                value={contents.streamingUrl}
-                                onChange={(e) => setContents({ ...contents, streamingUrl: e.target.value })}
-                                className="w-full"
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    id="streamingUrl"
+                                    type="url"
+                                    value={contents.streamingUrl}
+                                    onChange={(e) => setContents({ ...contents, streamingUrl: e.target.value })}
+                                    className="w-full"
+                                />
+                                <Button type="button" onClick={handleFetchImage} disabled={loading}>
+                                    {loading ? "取得中..." : "画像取得"}
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="image" className="text-sm font-medium leading-none">
@@ -186,11 +227,13 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                         </div>
                     </div>
                     <div className="flex gap-4 mt-4 sticky bottom-0">
-                        <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>キャンセル</Button>
-                        <Button type="submit" className="w-full">{contentsToEdit ? '更新' : '追加'}</Button>
+                        <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+                            キャンセル
+                        </Button>
+                        <Button type="submit" className="w-full">{contentsToEdit ? "更新" : "追加"}</Button>
                     </div>
                 </form>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

@@ -15,6 +15,7 @@ const __dirname = dirname(__filename);
 import { initializeDatabase } from './db.js';
 import authRoutes from './routes/auth.js';
 import contentsRoutes from './routes/contents.js';
+import imagesRoutes from './routes/images.js';
 
 const app = express();
 const PORT = 5000;
@@ -56,6 +57,7 @@ initializeDatabase();
 // Routes
 app.use('/api', authRoutes);
 app.use('/api', contentsRoutes);
+app.use('/api', imagesRoutes);
 
 // Start the server
 app.listen(PORT, () => {

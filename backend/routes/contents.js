@@ -1,16 +1,9 @@
 import express from 'express';
 import { db } from '../db.js';
 import auth from '../middleware/auth.js';
-import path from 'path';
-import { dirname } from 'path';
-import * as fs from 'node:fs/promises';
 import { downloadImage, isExternalImage } from '../utils/imageDownload.js';
-import { fileURLToPath } from 'url';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const imageDir = path.join(__dirname, '../images');
 
 // GET /contents (protected route)
 router.get('/contents', auth, (req, res) => {
@@ -35,35 +28,6 @@ router.get('/contents', auth, (req, res) => {
             res.json(transformedRows);
         }
     );
-});
-
-router.get('/images/:hashDir1/:hashDir2/:filename', async (req, res) => {
-    const { hashDir1, hashDir2, filename } = req.params;
-
-    // 絶対パスを生成
-    const imagePath = path.join(imageDir, hashDir1, hashDir2, filename);
-    const resolvedImagePath = path.resolve(imagePath);
-    const resolvedBaseDir = path.resolve(imageDir);
-
-    // セキュリティ対策：リクエストされたファイルがIMAGE_DIR内にあるかチェック
-    if (!resolvedImagePath.startsWith(resolvedBaseDir)) {
-        return res.status(404).json({ error: 'image not found' });
-    }
-
-    try {
-        await fs.access(resolvedImagePath, fs.constants.F_OK);
-        res.sendFile(resolvedImagePath, err => {
-            if (err) {
-                console.error('ファイル送信エラー:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({ error: '画像ファイルの送信に失敗しました。' });
-                }
-            }
-        });
-    } catch (err) {
-        console.error('画像取得失敗:', err);
-        return res.status(404).json({ error: 'image not found' });
-    }
 });
 
 // POST /contents (protected route)
