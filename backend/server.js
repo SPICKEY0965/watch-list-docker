@@ -13,6 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 import { initializeDatabase } from './db.js';
+import rootRoutes from './routes/root.js';
 import authRoutes from './routes/auth.js';
 import contentsRoutes from './routes/contents.js';
 import imagesRoutes from './routes/images.js';
@@ -55,6 +56,7 @@ const ipAddress = getLocalIpAddress();
 initializeDatabase();
 
 // Routes
+app.use('', rootRoutes);
 app.use('/api', authRoutes);
 app.use('/api', contentsRoutes);
 app.use('/api', imagesRoutes);
