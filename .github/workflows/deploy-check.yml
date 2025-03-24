@@ -18,7 +18,7 @@ jobs:
 
       - name: Docker Compose のセットアップとビルド
         run: |
-          docker-compose up -d --build
+          docker compose up -d --build
           sleep 10
 
       - name: フロントエンドの起動確認
@@ -32,4 +32,4 @@ jobs:
       - name: コンテナのログ出力（失敗時）
         if: failure()
         run: |
-          docker-compose logs
+          docker compose logs
