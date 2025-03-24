@@ -1,0 +1,35 @@
+name: Deploy Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Docker Compose のセットアップとビルド
+        run: |
+          docker-compose up -d --build
+          sleep 10
+
+      - name: フロントエンドの起動確認
+        run: |
+          curl -f http://localhost:3000 || (echo "Frontend failed to start" && exit 1)
+
+      - name: バックエンドの起動確認
+        run: |
+          curl -f http://localhost:5000 || (echo "Backend failed to start" && exit 1)
+
+      - name: コンテナのログ出力（失敗時）
+        if: failure()
+        run: |
+          docker-compose logs
