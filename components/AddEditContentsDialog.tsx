@@ -1,30 +1,12 @@
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import React, { useEffect, useState } from "react";
 import { Contents, ContentsRating, ContentsStatus } from "./types";
-import axios from 'axios';
-
-async function fetchImageUrlFromVideoUrl(videoUrl: string): Promise<string | null> {
-    if (!videoUrl) {
-        console.error("動画URLが指定されていません。");
-        return null;
-    }
-
-    try {
-        const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/images`,
-            { url: videoUrl },
-        );
-        console.log(response);
-        return response.data.imageUrl || null;
-    } catch (error) {
-        console.error("画像URL取得エラー:", error);
-        return null;
-    }
-}
+import { useApiClient } from '@/hooks/useApiClient';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddEditContentsDialogProps {
     onAddContents: (newContents: Omit<Contents, "id">) => void;
@@ -34,7 +16,13 @@ interface AddEditContentsDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-export function AddEditContentsDialog({ onAddContents, onEditContents, contentsToEdit, isOpen, onOpenChange }: AddEditContentsDialogProps) {
+export function AddEditContentsDialog({
+    onAddContents,
+    onEditContents,
+    contentsToEdit,
+    isOpen,
+    onOpenChange,
+}: AddEditContentsDialogProps) {
     const initialContentsState: Omit<Contents, "id"> = {
         title: "",
         duration: "",
@@ -50,6 +38,24 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
 
     const [contents, setContents] = useState<Omit<Contents, "id">>(initialContentsState);
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    const { token, handleLogout } = useAuth();
+    const apiClient = useApiClient(token, handleLogout);
+
+    const fetchImageUrlFromVideoUrl = useCallback(async (videoUrl: string): Promise<string | null> => {
+        if (!videoUrl) {
+            setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
+            return null;
+        }
+        try {
+            const response = await apiClient.post('/api/images', { url: videoUrl });
+            return response.data.imageUrl || null;
+        } catch {
+            setErrors(prev => ({ ...prev, streamingUrl: "画像の取得に失敗しました。" }));
+            return null;
+        }
+    }, [apiClient]);
 
     useEffect(() => {
         if (contentsToEdit) {
@@ -57,10 +63,28 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
         } else {
             setContents(initialContentsState);
         }
+        setErrors({});
     }, [contentsToEdit]);
+
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        if (!contents.title.trim()) {
+            newErrors.title = "タイトルは必須です。";
+        }
+        if (contents.episodes <= 0) {
+            newErrors.episodes = "話数は0より大きい必要があります。";
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
         try {
             if (contentsToEdit) {
                 await onEditContents({ ...contents, id: contentsToEdit.id });
@@ -70,14 +94,19 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
             setContents(initialContentsState);
             onOpenChange(false);
         } catch (error) {
-            console.error("Error saving contents:", error);
-            alert("コンテンツの保存中にエラーが発生しました。再試行してください。");
+            console.error("コンテンツ保存エラー:", error);
+            setErrors(prev => ({ ...prev, submit: "コンテンツの保存中にエラーが発生しました。再試行してください。" }));
         }
     };
 
     const handleFetchImage = async () => {
+        setErrors(prev => {
+            const { streamingUrl: _, ...rest } = prev;
+            return rest;
+        });
+
         if (!contents.streamingUrl) {
-            alert("動画URLを入力してください。");
+            setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
             return;
         }
         setLoading(true);
@@ -85,8 +114,6 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
         setLoading(false);
         if (imageUrl) {
             setContents({ ...contents, image: imageUrl });
-        } else {
-            alert("画像の取得に失敗しました。");
         }
     };
 
@@ -108,10 +135,17 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                             <Input
                                 id="title"
                                 value={contents.title}
-                                onChange={(e) => setContents({ ...contents, title: e.target.value })}
+                                onChange={(e) => {
+                                    setContents({ ...contents, title: e.target.value });
+                                    if (errors.title) {
+                                        const { title, ...rest } = errors;
+                                        setErrors(rest);
+                                    }
+                                }}
                                 className="w-full"
                                 placeholder="必須"
                             />
+                            {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="episodes" className="text-sm font-medium leading-none">
@@ -121,9 +155,16 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                                 id="episodes"
                                 type="number"
                                 value={contents.episodes}
-                                onChange={(e) => setContents({ ...contents, episodes: parseInt(e.target.value) })}
+                                onChange={(e) => {
+                                    setContents({ ...contents, episodes: parseInt(e.target.value) });
+                                    if (errors.episodes) {
+                                        const { episodes, ...rest } = errors;
+                                        setErrors(rest);
+                                    }
+                                }}
                                 className="w-full"
                             />
+                            {errors.episodes && <p className="text-red-500 text-sm mt-1">{errors.episodes}</p>}
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="broadcastDate" className="text-sm font-medium leading-none">
@@ -169,14 +210,22 @@ export function AddEditContentsDialog({ onAddContents, onEditContents, contentsT
                                     id="streamingUrl"
                                     type="url"
                                     value={contents.streamingUrl}
-                                    onChange={(e) => setContents({ ...contents, streamingUrl: e.target.value })}
+                                    onChange={(e) => {
+                                        setContents({ ...contents, streamingUrl: e.target.value });
+                                        if (errors.streamingUrl) {
+                                            const { streamingUrl, ...rest } = errors;
+                                            setErrors(rest);
+                                        }
+                                    }}
                                     className="w-full"
                                 />
                                 <Button type="button" onClick={handleFetchImage} disabled={loading}>
                                     {loading ? "取得中..." : "画像取得"}
                                 </Button>
                             </div>
+                            {errors.streamingUrl && <p className="text-red-500 text-sm mt-1">{errors.streamingUrl}</p>}
                         </div>
+                        {errors.submit && <p className="text-red-500 text-sm mt-1">{errors.submit}</p>}
                         <div className="space-y-1">
                             <Label htmlFor="image" className="text-sm font-medium leading-none">
                                 画像URL

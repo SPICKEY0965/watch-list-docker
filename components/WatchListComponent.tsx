@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +13,10 @@ import { calculateCurrentEpisode } from '@/components/utils';
 import { openDatabase, storeDataInIndexedDB, getDataFromIndexedDB } from '@/utils/indexedDB';
 import { useApiClient } from '@/hooks/useApiClient';
 import { sortContentsList } from '@/utils/sortContentsList';
+import { useAuth } from '@/hooks/useAuth';
+import { LocalSettings, useLocalSettings } from '@/hooks/useLocalSettings';
+import { useServiceWorker } from '@/hooks/useServiceWorker';
+import router from 'next/router';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
@@ -24,18 +27,9 @@ export function WatchListComponent() {
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
-    const router = useRouter();
-
-    // ログアウト処理
-    const handleLogout = useCallback(() => {
-        setToken(null);
-        localStorage.removeItem('token');
-        setContentsList([]);
-        router.push('/login');
-    }, [router]);
+    const { token, setToken, handleLogout } = useAuth();
 
     // API クライアントの作成
     const apiClient = useApiClient(token, handleLogout);
@@ -52,35 +46,26 @@ export function WatchListComponent() {
         };
     }, []);
 
-    // 初期データの読み込みとサービスワーカーの登録
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const storedActiveTab = (localStorage.getItem('activeTab') as ContentsStatus | 'All') || 'All';
-            const storedActiveRating = localStorage.getItem('activeRating') === 'null'
-                ? null
-                : (localStorage.getItem('activeRating') as ContentsRating | 'All') || 'All';
-            const storedSortBy = localStorage.getItem('sortBy') || 'Recently Updated';
-            const storedToken = localStorage.getItem('token');
-
-            setActiveTab(storedActiveTab);
-            setActiveRating(storedActiveRating);
-            setSortBy(storedSortBy);
-
-            if (storedToken) {
-                setToken(storedToken);
-            } else {
-                router.push('/login');
-            }
-
-            setIsLoaded(true);
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => console.log('Service Worker registered with scope:', registration.scope))
-                    .catch(error => console.error('Service Worker registration failed:', error));
-            }
+    const onSettingsLoaded = useCallback((settings: LocalSettings) => {
+        setActiveTab(settings.activeTab || 'All');
+        setActiveRating(settings.activeRating || 'All');
+        setSortBy(settings.sortBy || 'Recently Updated');
+        if (settings.token) {
+            setToken(settings.token);
         }
+    }, []);
+
+    const onNotAuthenticated = useCallback(() => {
+        router.push('/login');
     }, [router]);
+
+    useLocalSettings(
+        onSettingsLoaded,
+        onNotAuthenticated,
+        setIsLoaded
+    );
+
+    useServiceWorker();
 
     // ローカルストレージへの状態保存
     useEffect(() => {
@@ -103,9 +88,7 @@ export function WatchListComponent() {
                 }
             }
 
-            const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await apiClient.get('/api/contents');
 
             const updatedContentsList: Contents[] = response.data.map((contents: Contents) => {
                 return {
@@ -145,9 +128,7 @@ export function WatchListComponent() {
 
     const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
         try {
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/contents`, newContents, {
-                headers: { Authorization: token }
-            });
+            const response = await apiClient.post('/api/contents', newContents);
             setContentsList(prev => sortContentsList([...prev, response.data], sortBy));
             fetchContentsList();
         } catch (error) {
@@ -157,9 +138,7 @@ export function WatchListComponent() {
 
     const handleEditContents = async (editedContents: Contents) => {
         try {
-            const response = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/contents/${editedContents.id}`, editedContents, {
-                headers: { Authorization: token }
-            });
+            const response = await apiClient.put(`/api/contents/${editedContents.id}`, editedContents);
             setContentsList(prev =>
                 sortContentsList(
                     prev.map(item => item.id === editedContents.id ? response.data : item),
@@ -175,9 +154,7 @@ export function WatchListComponent() {
 
     const handleDeleteContents = async (id: number) => {
         try {
-            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/contents/${id}`, {
-                headers: { Authorization: token }
-            });
+            await apiClient.delete(`/api/contents/${id}`);
             setContentsList(prev => sortContentsList(prev.filter(item => item.id !== id), sortBy));
         } catch (error) {
             console.error('コンテンツ削除時にエラーが発生しました。', error);
