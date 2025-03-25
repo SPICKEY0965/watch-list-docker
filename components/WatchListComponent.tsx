@@ -1,77 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddEditContentsDialog } from '@/components/AddEditContentsDialog';
-import { convertToUniversalLink } from '@/components/convert_universalURL';
-import { Contents, ContentsRating, ContentsStatus } from '@/components/types';
-import { calculateCurrentEpisode, getLastUpdateDate } from '@/components/utils';
 import Header from '@/components/layout/header';
 import FilterMenu from '@/components/layout/filtermenu';
 import ContentsCard from '@/components/ContentsCard';
-
-//
-// IndexedDB 関連のヘルパー関数
-//
-async function openDatabase(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('WatchListDB', 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            db.createObjectStore('contents', { keyPath: 'id' });
-        };
-    });
-}
-
-async function storeDataInIndexedDB(db: IDBDatabase, data: Contents[]): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction('contents', 'readwrite');
-        const store = transaction.objectStore('contents');
-        data.forEach(item => store.put(item));
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-    });
-}
-
-async function getDataFromIndexedDB(db: IDBDatabase): Promise<Contents[]> {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction('contents', 'readonly');
-        const store = transaction.objectStore('contents');
-        const request = store.getAll();
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-    });
-}
-
-//
-// API クライアント（トークンが変わった場合にも対応）
-//
-function useApiClient(token: string | null, handleLogout: () => void) {
-    const apiClient = useMemo(() => {
-        const client = axios.create({
-            baseURL: process.env.NEXT_PUBLIC_API_URL,
-            headers: { Authorization: token ? `Bearer ${token}` : '' },
-        });
-
-        client.interceptors.response.use(
-            response => response,
-            (error: AxiosError) => {
-                if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-                    handleLogout();
-                }
-                return Promise.reject(error);
-            }
-        );
-        return client;
-    }, [token, handleLogout]);
-
-    return apiClient;
-}
+import { Contents, ContentsRating, ContentsStatus } from '@/components/types';
+import { calculateCurrentEpisode } from '@/components/utils';
+import { openDatabase, storeDataInIndexedDB, getDataFromIndexedDB } from '@/utils/indexedDB';
+import { useApiClient } from '@/hooks/useApiClient';
+import { sortContentsList } from '@/utils/sortContentsList';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
@@ -87,9 +29,7 @@ export function WatchListComponent() {
     const [isOnline, setIsOnline] = useState(true);
     const router = useRouter();
 
-    //
     // ログアウト処理
-    //
     const handleLogout = useCallback(() => {
         setToken(null);
         localStorage.removeItem('token');
@@ -97,14 +37,10 @@ export function WatchListComponent() {
         router.push('/login');
     }, [router]);
 
-    //
     // API クライアントの作成
-    //
     const apiClient = useApiClient(token, handleLogout);
 
-    //
     // オンライン状態の監視
-    //
     useEffect(() => {
         const updateOnlineStatus = (status: boolean) => setIsOnline(status);
         setIsOnline(navigator.onLine);
@@ -116,9 +52,7 @@ export function WatchListComponent() {
         };
     }, []);
 
-    //
     // 初期データの読み込みとサービスワーカーの登録
-    //
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedActiveTab = (localStorage.getItem('activeTab') as ContentsStatus | 'All') || 'All';
@@ -148,9 +82,7 @@ export function WatchListComponent() {
         }
     }, [router]);
 
-    //
     // ローカルストレージへの状態保存
-    //
     useEffect(() => {
         if (isLoaded) {
             localStorage.setItem('activeTab', activeTab);
@@ -159,9 +91,7 @@ export function WatchListComponent() {
         }
     }, [activeTab, activeRating, sortBy, isLoaded]);
 
-    //
     // コンテンツリストの取得
-    //
     const fetchContentsList = useCallback(async () => {
         try {
             if (!isOnline) {
@@ -207,52 +137,7 @@ export function WatchListComponent() {
         }
     }, [token, fetchContentsList]);
 
-    //
-    // コンテンツリストのソート処理
-    //
-    const sortContentsList = useCallback((list: Contents[], criteria: string): Contents[] => {
-        // コピーを作成
-        const listCopy = [...list];
-
-        // 基準ごとの比較関数（comparator）を生成する
-        let comparator: (a: Contents, b: Contents) => number;
-
-        if (criteria === 'Recently Updated') {
-            comparator = (a, b) => {
-                // getLastUpdateDate は必要な計算をカプセル化していると仮定
-                const aTime = getLastUpdateDate(a).getTime();
-                const bTime = getLastUpdateDate(b).getTime();
-                return bTime - aTime;
-            };
-        } else if (criteria === 'Name A-Z') {
-            comparator = (a, b) => a.title.localeCompare(b.title);
-        } else if (criteria === 'Released Date') {
-            comparator = (a, b) => Date.parse(b.broadcastDate) - Date.parse(a.broadcastDate);
-        } else if (criteria === 'Rating') {
-            // ルックアップ用のオブジェクトを事前に定義
-            const ratingPriority: { [key: string]: number } = {
-                'SS': 0,
-                'S': 1,
-                'A': 2,
-                'B': 3,
-                'C': 4,
-                'unrated': 5
-            };
-            comparator = (a, b) => {
-                const aRating = a.rating ?? 'unrated';
-                const bRating = b.rating ?? 'unrated';
-                return ratingPriority[aRating] - ratingPriority[bRating];
-            };
-        } else {
-            comparator = () => 0;
-        }
-
-        return listCopy.sort(comparator);
-    }, []);
-
-    //
     // 各種ハンドラ
-    //
     const handleSort = (criteria: string) => {
         setSortBy(criteria);
         setContentsList(prev => sortContentsList(prev, criteria));
@@ -275,7 +160,12 @@ export function WatchListComponent() {
             const response = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/contents/${editedContents.id}`, editedContents, {
                 headers: { Authorization: token }
             });
-            setContentsList(prev => sortContentsList(prev.map(item => item.id === editedContents.id ? response.data : item), sortBy));
+            setContentsList(prev =>
+                sortContentsList(
+                    prev.map(item => item.id === editedContents.id ? response.data : item),
+                    sortBy
+                )
+            );
             setContentsToEdit(null);
             fetchContentsList();
         } catch (error) {
@@ -302,9 +192,7 @@ export function WatchListComponent() {
         }
     };
 
-    //
     // フィルタリング（タブ、評価）
-    //
     let filteredContentsList = contentsList;
     if (activeTab !== 'All' || activeRating !== 'All') {
         filteredContentsList = contentsList.filter(item =>
@@ -313,9 +201,7 @@ export function WatchListComponent() {
         );
     }
 
-    //
     // グローバルイベント（アカウント削除ダイアログを開くためのカスタムイベント）
-    //
     useEffect(() => {
         const openDeleteAccountDialog = () => setIsDeleteAccountDialogOpen(true);
         document.addEventListener('openDeleteAccountDialog', openDeleteAccountDialog);
