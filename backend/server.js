@@ -17,6 +17,7 @@ import rootRoutes from './routes/root.js';
 import authRoutes from './routes/auth.js';
 import contentsRoutes from './routes/contents.js';
 import imagesRoutes from './routes/images.js';
+import metadataRoutes from './routes/metadata.js';
 
 const app = express();
 const PORT = 5000;
@@ -60,6 +61,7 @@ app.use('', rootRoutes);
 app.use('/api', authRoutes);
 app.use('/api', contentsRoutes);
 app.use('/api', imagesRoutes);
+app.use('/api', metadataRoutes);
 
 // Start the server
 app.listen(PORT, () => {

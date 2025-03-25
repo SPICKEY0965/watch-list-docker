@@ -83,19 +83,27 @@ export function AddEditContentsDialog({
         });
     };
 
-    const fetchImageUrlFromVideoUrl = useCallback(async (videoUrl: string): Promise<string | null> => {
-        if (!videoUrl) {
-            setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
-            return null;
-        }
-        try {
-            const response = await apiClient.post('/api/images', { url: videoUrl });
-            return response.data.imageUrl || null;
-        } catch {
-            setErrors(prev => ({ ...prev, streamingUrl: "画像の取得に失敗しました。" }));
-            return null;
-        }
-    }, [apiClient]);
+    const fetchMetaDataFromVideoUrl = useCallback(
+        async (
+            videoUrl: string
+        ): Promise<{ imageUrl: string | null; broadcastDate: string | null, title: string | null } | null> => {
+            if (!videoUrl) {
+                setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
+                return null;
+            }
+            try {
+                const response = await apiClient.post('/api/metadata', { url: videoUrl });
+                const { imageUrl, broadcastDate, title } = response.data;
+                return { imageUrl: imageUrl || null, broadcastDate: broadcastDate || null, title: title || null };
+            } catch (error) {
+                console.error("Metadataの取得に失敗しました:", error);
+                setErrors(prev => ({ ...prev, streamingUrl: "取得に失敗しました。" }));
+                return null;
+            }
+        },
+        [apiClient, setErrors]
+    );
+
 
     useEffect(() => {
         if (contentsToEdit) {
@@ -139,23 +147,33 @@ export function AddEditContentsDialog({
         }
     };
 
-    const handleFetchImage = async () => {
-        setErrors(prev => {
+    const handleFetchMetaData = async () => {
+        setErrors((prev) => {
             const { streamingUrl: _, ...rest } = prev;
             return rest;
         });
-
         if (!contents.streamingUrl) {
-            setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
+            setErrors((prev) => ({
+                ...prev,
+                streamingUrl: "動画URLを入力してください。",
+            }));
             return;
         }
         setLoading(true);
-        const imageUrl = await fetchImageUrlFromVideoUrl(contents.streamingUrl);
+        const metadata = await fetchMetaDataFromVideoUrl(contents.streamingUrl);
+
         setLoading(false);
-        if (imageUrl) {
-            setContents({ ...contents, image: imageUrl });
+
+        if (metadata && metadata.imageUrl && metadata.broadcastDate && metadata.title) {
+            setContents({
+                ...contents,
+                image: metadata.imageUrl,
+                broadcastDate: metadata.broadcastDate,
+                title: metadata.title,
+            });
         }
     };
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -273,8 +291,8 @@ export function AddEditContentsDialog({
                                     }}
                                     className="w-full"
                                 />
-                                <Button type="button" onClick={handleFetchImage} disabled={loading}>
-                                    {loading ? "取得中..." : "画像取得"}
+                                <Button type="button" onClick={handleFetchMetaData} disabled={loading}>
+                                    {loading ? "取得中..." : "自動入力"}
                                 </Button>
                             </div>
                             {errors.streamingUrl && <p className="text-red-500 text-sm mt-1">{errors.streamingUrl}</p>}
