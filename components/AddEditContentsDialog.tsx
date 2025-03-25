@@ -43,6 +43,46 @@ export function AddEditContentsDialog({
     const { token, handleLogout } = useAuth();
     const apiClient = useApiClient(token, handleLogout);
 
+    // 放送日から曜日を自動的に判定する関数
+    const getDayFromDate = (dateString: string | number | Date) => {
+        if (!dateString) return '';
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const date = new Date(dateString);
+        return days[date.getDay()];
+    };
+
+    useEffect(() => {
+        if (contents.broadcastDate) {
+            const autoUpdateDay = getDayFromDate(contents.broadcastDate);
+            setContents(prev => ({ ...prev, updateDay: autoUpdateDay }));
+        }
+    }, [contents.broadcastDate]);
+
+    const handleDateTimeChange = (type: string, value: string) => {
+        let newDateTime;
+        const currentDate = new Date();
+
+        if (type === 'date') {
+            const time = contents.broadcastDate
+                ? contents.broadcastDate.split('T')[1] ||
+                `${currentDate.getHours().toString().padStart(2, '0')}:${currentDate.getMinutes().toString().padStart(2, '0')}`
+                : `${currentDate.getHours().toString().padStart(2, '0')}:${currentDate.getMinutes().toString().padStart(2, '0')}`;
+
+            newDateTime = `${value}T${time}`;
+        } else {
+            const date = contents.broadcastDate
+                ? contents.broadcastDate.split('T')[0]
+                : currentDate.toISOString().split('T')[0];
+
+            newDateTime = `${date}T${value}`;
+        }
+
+        setContents({
+            ...contents,
+            broadcastDate: newDateTime
+        });
+    };
+
     const fetchImageUrlFromVideoUrl = useCallback(async (videoUrl: string): Promise<string | null> => {
         if (!videoUrl) {
             setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
@@ -170,19 +210,33 @@ export function AddEditContentsDialog({
                             <Label htmlFor="broadcastDate" className="text-sm font-medium leading-none">
                                 放送日
                             </Label>
-                            <Input
-                                id="broadcastDate"
-                                type="date"
-                                value={contents.broadcastDate}
-                                onChange={(e) => setContents({ ...contents, broadcastDate: e.target.value })}
-                                className="w-full"
-                            />
+                            <div className="flex space-x-2">
+                                <Input
+                                    id="broadcastDate"
+                                    type="date"
+                                    value={contents.broadcastDate ? contents.broadcastDate.split('T')[0] : ''}
+                                    onChange={(e) => handleDateTimeChange('date', e.target.value)}
+                                    className="w-2/3"
+                                />
+                                <Input
+                                    id="broadcastTime"
+                                    type="time"
+                                    value={contents.broadcastDate && contents.broadcastDate.includes('T')
+                                        ? contents.broadcastDate.split('T')[1]
+                                        : ''}
+                                    onChange={(e) => handleDateTimeChange('time', e.target.value)}
+                                    className="w-1/3"
+                                />
+                            </div>
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="updateDay" className="text-sm font-medium leading-none">
                                 更新日
                             </Label>
-                            <Select value={contents.updateDay} onValueChange={(value) => setContents({ ...contents, updateDay: value })}>
+                            <Select
+                                value={contents.updateDay}
+                                onValueChange={(value) => setContents({ ...contents, updateDay: value })}
+                            >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="曜日を選択" />
                                 </SelectTrigger>
