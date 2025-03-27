@@ -16,7 +16,7 @@ import { sortContentsList } from '@/utils/sortContentsList';
 import { useAuth } from '@/hooks/useAuth';
 import { LocalSettings, useLocalSettings } from '@/hooks/useLocalSettings';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
-import router from 'next/router';
+import { useRouter } from 'next/navigation';
 
 export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
@@ -30,6 +30,7 @@ export function WatchListComponent() {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
     const { token, setToken, handleLogout } = useAuth();
+    const router = useRouter();
 
     // API クライアントの作成
     const apiClient = useApiClient(token, handleLogout);
