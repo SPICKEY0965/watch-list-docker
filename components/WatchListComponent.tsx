@@ -89,7 +89,7 @@ export function WatchListComponent() {
                 }
             }
 
-            const response = await apiClient.get('/api/contents');
+            const response = await apiClient.get('/api/watchlists');
 
             const updatedContentsList: Contents[] = response.data.map((contents: Contents) => {
                 return {
@@ -127,9 +127,9 @@ export function WatchListComponent() {
         setContentsList(prev => sortContentsList(prev, criteria));
     };
 
-    const handleAddContents = async (newContents: Omit<Contents, 'id'>) => {
+    const handleAddContents = async (newContents: Omit<Contents, "content_id">) => {
         try {
-            const response = await apiClient.post('/api/contents', newContents);
+            const response = await apiClient.post('/api/watchlists', newContents);
             setContentsList(prev => sortContentsList([...prev, response.data], sortBy));
             fetchContentsList();
         } catch (error) {
@@ -139,31 +139,32 @@ export function WatchListComponent() {
 
     const handleEditContents = async (editedContents: Contents) => {
         try {
-            const response = await apiClient.put(`/api/contents/${editedContents.id}`, editedContents);
+            const response = await apiClient.put(`/api/watchlists/${editedContents.content_id}`, editedContents);
+            
             setContentsList(prev =>
                 sortContentsList(
-                    prev.map(item => item.id === editedContents.id ? response.data : item),
+                    prev.map(item => item.content_id === editedContents.content_id ? editedContents : item),
                     sortBy
                 )
             );
-            setContentsToEdit(null);
-            fetchContentsList();
+                setContentsToEdit(null);
+                fetchContentsList();
         } catch (error) {
             console.error('コンテンツ編集時にエラーが発生しました。', error);
         }
-    };
+    };    
 
     const handleDeleteContents = async (id: number) => {
         try {
-            await apiClient.delete(`/api/contents/${id}`);
-            setContentsList(prev => sortContentsList(prev.filter(item => item.id !== id), sortBy));
+            await apiClient.delete(`/api/watchlists/${id}`);
+            setContentsList(prev => sortContentsList(prev.filter(item => item.content_id !== id), sortBy));
         } catch (error) {
             console.error('コンテンツ削除時にエラーが発生しました。', error);
         }
     };
 
     const handleStatusChange = async (id: number, newStatus: ContentsStatus) => {
-        const item = contentsList.find(item => item.id === id);
+        const item = contentsList.find(item => item.content_id === id);
         if (item) {
             const updated = { ...item, status: newStatus };
             await handleEditContents(updated);
@@ -222,7 +223,7 @@ export function WatchListComponent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                     {filteredContentsList.map(item => (
                         <ContentsCard
-                            key={item.id}
+                            key={item.content_id}
                             contents={item}
                             onEdit={(content) => setContentsToEdit(content)}
                             onDelete={handleDeleteContents}
@@ -257,7 +258,7 @@ export function WatchListComponent() {
                         </Button>
                         <Button variant="destructive" onClick={async () => {
                             try {
-                                await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/auth`, {
+                                await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
                                     headers: { Authorization: token }
                                 });
                                 handleLogout();

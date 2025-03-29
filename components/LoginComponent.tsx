@@ -11,6 +11,7 @@ interface LoginComponentProps {
 export function LoginComponent({ onLogin }: LoginComponentProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isPrivate, setIsPrivate] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,17 +37,24 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
     if (!validatePassword(password)) {
       setError('パスワードは 8 文字以上で、大文字、小文字、数字、特殊文字を含める必要があります。');
       return;
     }
 
     try {
-      const endpoint = isRegistering ? '/api/register' : '/api/login';
+      const endpoint = isRegistering ? '/api/users' : '/api/login';
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      const requestData: any = { username, password };
+
+      if (isRegistering) {
+        requestData.private = isPrivate.toString();
+      }
+
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-        { username, password },
+        requestData,
         {
           headers: {
             'X-CSRF-Token': csrfToken || '',
@@ -71,7 +79,7 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
         }
       }
     }
-  }
+  };
 
   const passwordValidationStatus = getPasswordValidationStatus(password);
 
@@ -135,6 +143,18 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
               </div>
             )}
           </div>
+          {isRegistering && (
+            <div>
+              <Label htmlFor="private" className="text-white">プライベートアカウント</Label>
+              <input
+                id="private"
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="ml-2"
+              />
+            </div>
+          )}
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <Button type="submit" className="w-full">
             {isRegistering ? '登録' : 'ログイン'}

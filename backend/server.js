@@ -18,6 +18,8 @@ import authRoutes from './routes/auth.js';
 import contentsRoutes from './routes/contents.js';
 import imagesRoutes from './routes/images.js';
 import metadataRoutes from './routes/metadata.js';
+import watchlistsRoutes from './routes/watch_lists.js';
+import usersRoutes from './routes/users.js';
 
 const app = express();
 const PORT = 5000;
@@ -26,6 +28,7 @@ const PORT = 5000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('combined', { stream: fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }) }));
+app.use(morgan('combined'));
 
 // Error logging middleware
 app.use((err, req, res, next) => {
@@ -58,10 +61,13 @@ initializeDatabase();
 
 // Routes
 app.use('', rootRoutes);
-app.use('/api', authRoutes);
+/* app.use('/api', authRoutes); */
 app.use('/api', contentsRoutes);
 app.use('/api', imagesRoutes);
 app.use('/api', metadataRoutes);
+app.use('/api', watchlistsRoutes);
+app.use('/api', contentsRoutes);
+app.use('/api', usersRoutes);
 
 // Start the server
 app.listen(PORT, () => {

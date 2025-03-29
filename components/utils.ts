@@ -1,7 +1,7 @@
 import { addDays, getDay, parseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
 import { Contents, AiringStatus } from './types';
 
-export function calculateNextBroadcastDate(contents: Contents): Date {
+export function calculateNextbroadcastDate(contents: Contents): Date {
     const currentDate = new Date();
     const currentDayOfWeek = currentDate.getDay();
     const broadcastDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(contents.updateDay);

@@ -9,7 +9,7 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AddEditContentsDialogProps {
-    onAddContents: (newContents: Omit<Contents, "id">) => void;
+    onAddContents: (newContents: Omit<Contents, "content_id">) => void;
     onEditContents: (editedContents: Contents) => void;
     contentsToEdit: Contents | null;
     isOpen: boolean;
@@ -23,20 +23,23 @@ export function AddEditContentsDialog({
     isOpen,
     onOpenChange,
 }: AddEditContentsDialogProps) {
-    const initialContentsState: Omit<Contents, "id"> = {
+    const initialContentsState: Omit<Contents, "content_id"> = {
         title: "",
-        duration: "",
         episodes: 12,
         currentEpisode: 0,
         image: "",
-        rating: null,
+        rating: "unrated",
         broadcastDate: "",
         updateDay: "",
-        streamingUrl: "",
+        content_type: "",
+        season: 1,
+        cour: 1,
         status: "Watching",
+        is_private: "true",
+        streaming_url: ""
     };
 
-    const [contents, setContents] = useState<Omit<Contents, "id">>(initialContentsState);
+    const [contents, setContents] = useState<Omit<Contents, "content_id">>(initialContentsState);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -88,7 +91,7 @@ export function AddEditContentsDialog({
             videoUrl: string
         ): Promise<{ imageUrl: string | null; broadcastDate: string | null, title: string | null } | null> => {
             if (!videoUrl) {
-                setErrors(prev => ({ ...prev, streamingUrl: "動画URLを入力してください。" }));
+                setErrors(prev => ({ ...prev, streaming_url: "動画URLを入力してください。" }));
                 return null;
             }
             try {
@@ -97,7 +100,7 @@ export function AddEditContentsDialog({
                 return { imageUrl: imageUrl || null, broadcastDate: broadcastDate || null, title: title || null };
             } catch (error) {
                 console.error("Metadataの取得に失敗しました:", error);
-                setErrors(prev => ({ ...prev, streamingUrl: "取得に失敗しました。" }));
+                setErrors(prev => ({ ...prev, streaming_url: "取得に失敗しました。" }));
                 return null;
             }
         },
@@ -135,7 +138,7 @@ export function AddEditContentsDialog({
 
         try {
             if (contentsToEdit) {
-                await onEditContents({ ...contents, id: contentsToEdit.id });
+                await onEditContents({ ...contents, content_id: contentsToEdit.content_id });
             } else {
                 await onAddContents(contents);
             }
@@ -149,18 +152,18 @@ export function AddEditContentsDialog({
 
     const handleFetchMetaData = async () => {
         setErrors((prev) => {
-            const { streamingUrl: _, ...rest } = prev;
+            const { streaming_url: _, ...rest } = prev;
             return rest;
         });
-        if (!contents.streamingUrl) {
+        if (!contents.streaming_url) {
             setErrors((prev) => ({
                 ...prev,
-                streamingUrl: "動画URLを入力してください。",
+                streaming_url: "動画URLを入力してください。",
             }));
             return;
         }
         setLoading(true);
-        const metadata = await fetchMetaDataFromVideoUrl(contents.streamingUrl);
+        const metadata = await fetchMetaDataFromVideoUrl(contents.streaming_url);
 
         setLoading(false);
 
@@ -274,18 +277,18 @@ export function AddEditContentsDialog({
                             </Select>
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="streamingUrl" className="text-sm font-medium leading-none">
+                            <Label htmlFor="streaming_url" className="text-sm font-medium leading-none">
                                 動画URL
                             </Label>
                             <div className="flex gap-2">
                                 <Input
-                                    id="streamingUrl"
+                                    id="streaming_url"
                                     type="url"
-                                    value={contents.streamingUrl}
+                                    value={contents.streaming_url}
                                     onChange={(e) => {
-                                        setContents({ ...contents, streamingUrl: e.target.value });
-                                        if (errors.streamingUrl) {
-                                            const { streamingUrl, ...rest } = errors;
+                                        setContents({ ...contents, streaming_url: e.target.value });
+                                        if (errors.streaming_url) {
+                                            const { streaming_url, ...rest } = errors;
                                             setErrors(rest);
                                         }
                                     }}
@@ -295,7 +298,7 @@ export function AddEditContentsDialog({
                                     {loading ? "取得中..." : "自動入力"}
                                 </Button>
                             </div>
-                            {errors.streamingUrl && <p className="text-red-500 text-sm mt-1">{errors.streamingUrl}</p>}
+                            {errors.streaming_url && <p className="text-red-500 text-sm mt-1">{errors.streaming_url}</p>}
                         </div>
                         {errors.submit && <p className="text-red-500 text-sm mt-1">{errors.submit}</p>}
                         <div className="space-y-1">
