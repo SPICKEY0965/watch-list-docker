@@ -18,7 +18,7 @@ function initializeDatabase() {
                 user_name VARCHAR(255) UNIQUE,
                 password TEXT,
                 status TEXT, -- active, banned等
-                private TEXT -- true, false
+                is_private TEXT DEFAULT 'true' CHECK (is_private IN ('true', 'false'))
             )
         `);
 
@@ -62,7 +62,7 @@ function initializeDatabase() {
                 season TEXT,
                 cour TEXT,
                 airing_status TEXT,
-                private TEXT DEFAULT 'true' CHECK (private IN ('true', 'false')),
+                is_private TEXT DEFAULT 'true' CHECK (is_private IN ('true', 'false')),
                 added_by TEXT,
                 broadcastDate DATETIME,
                 added_at DATETIME,

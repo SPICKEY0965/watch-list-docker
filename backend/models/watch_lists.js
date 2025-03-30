@@ -6,6 +6,8 @@ import { runQuery, getQuery, allQuery } from './query.js';
 
 /**
  * Watchlistの取得
+ *
+ * @param {string} userId - ユーザーID
  * @param {number} limit - 件数上限
  * @param {number} offset - オフセット
  * @param {string} sortBy - ソート対象カラム名
@@ -14,15 +16,13 @@ import { runQuery, getQuery, allQuery } from './query.js';
  * @param {string} [content_type] - コンテンツタイプ ('documentary', 'drama', 'anime')
  * @param {string} [status] - 視聴ステータス
  * @param {string} [rating] - レーティング
- * @param {string} [serviceId] - サービスID
  * @returns {Promise<Array>} - ウォッチリスト一覧
  */
 async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_status, content_type, status, rating, serviceId) {
     let query = `
-        SELECT w.content_id, w.status, w.rating, c.title, c.episodes, c.image, c.streaming_url, c.content_type, c.season, c.cour, c.airing_status, c.broadcastDate
+        SELECT w.content_id, w.status, w.rating, c.title, c.episodes, c.image, c.streaming_url, c.content_type, c.season, c.cour, c.airing_status, c.broadcastDate, c.is_private
         FROM watch_lists w
-        JOIN contents c ON w.content_id = c.content_id
-        LEFT JOIN content_service cs ON w.content_id = cs.content_id
+        INNER JOIN contents c ON w.content_id = c.content_id
         WHERE w.user_id = ?
     `;
     const queryParams = [userId];
@@ -36,19 +36,19 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
         queryParams.push(content_type);
     }
     if (status) {
-        query += 'AND w.status = ?';
+        query += ' AND w.status = ?';
         queryParams.push(status);
     }
     if (rating) {
-        query += 'AND w.rating = ?';
+        query += ' AND w.rating = ?';
         queryParams.push(rating);
     }
     if (serviceId) {
-        query += 'AND cs.service_id = ?';
+        query += ' AND cs.service_id = ?';
         queryParams.push(serviceId);
     }
 
-    // ※ sortBy, sortOrder はルーティング側で厳密に検証済みと想定
+    // sortBy, sortOrder はルーティング側で検証済み
     query += ` ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`;
     queryParams.push(limit, offset);
     return allQuery(query, queryParams);
@@ -75,7 +75,7 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
  * @param {number} data.season - シーズン
  * @param {number} data.cour - クール
  * @param {string} data.airing_status - 放送ステータス ('Upcoming', 'Airing', 'Finished Airing')
- * @param {boolean} data.private - 非公開フラグ
+ * @param {boolean} data.is_private - 非公開フラグ
  * @param {string} data.broadcastDate - ブロードキャスト開始日時
  * @param {string} data.status - 視聴ステータス('Watching', 'hold', 'Plan to watch', 'Dropped', 'Completed')
  * @param {number} data.rating - 評価 ('SS', 'S', 'A', 'B', 'C')
@@ -83,16 +83,16 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
  * @returns {Promise<number>} - 追加されたコンテンツID
  */
 async function addWatchlist(data) {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, private: isPrivate, broadcastDate, status, rating, added_by } = data;
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating, added_by } = data;
 
     try {
         await runQuery('BEGIN TRANSACTION');
 
         const insertContentQuery = `
-            INSERT INTO contents (title, episodes, image, streaming_url, content_type, season, cour, airing_status, private, added_by, broadcastDate, added_at, updated_at)
+            INSERT INTO contents (title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate, added_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         `;
-        const contentResult = await runQuery(insertContentQuery, [title, episodes, image, streaming_url, content_type, season, cour, airing_status, isPrivate, added_by, broadcastDate]);
+        const contentResult = await runQuery(insertContentQuery, [title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate]);
         const contentId = contentResult.lastID;
 
         const insertWatchlistQuery = `
@@ -172,6 +172,7 @@ async function deleteWatchlist(userId, contentId) {
     try {
         const row = await getQuery(`SELECT * FROM watch_lists WHERE user_id = ? AND content_id = ?`, [userId, contentId]);
         if (!row) {
+            console.log('No content found to delete.');
             return { message: 'No content found to delete.' };
         }
 
@@ -180,6 +181,7 @@ async function deleteWatchlist(userId, contentId) {
 
         return { deleted: result.changes };
     } catch (err) {
+        console.log(err);
         throw { status: 500, message: 'Error deleting from watchlist.', error: err };
     }
 }

@@ -5,10 +5,10 @@ import { runQuery, getQuery, allQuery } from './query.js';
 
 /**
  * ユーザー登録
- * @param {object} data - 登録データ { username, password, private }
+ * @param {object} data - 登録データ { username, password, is_private }
  * @returns {Promise<string>} - 登録されたユーザーID
  */
-async function registerUser({ username, password, private: isPrivate }) {
+async function registerUser({ username, password, is_private }) {
     try {
         const hashedPassword = await bcrypt.hash(password, 13);
         const userId = uuidv4();
@@ -18,8 +18,8 @@ async function registerUser({ username, password, private: isPrivate }) {
             db.serialize(() => {
                 db.run('BEGIN TRANSACTION');
                 db.run(
-                    'INSERT INTO users (user_id, user_name, password, private, status) VALUES (?, ?, ?, ?, ?)',
-                    [userId, username, hashedPassword, isPrivate, 'active'],
+                    'INSERT INTO users (user_id, user_name, password, is_private, status) VALUES (?, ?, ?, ?, ?)',
+                    [userId, username, hashedPassword, is_private, 'active'],
                     function (err) {
                         if (err) {
                             db.run('ROLLBACK');
@@ -67,10 +67,10 @@ function getUserByUsername(username) {
 /**
  * ユーザーIDからユーザー情報を取得
  * @param {string} userId - ユーザーID
- * @returns {Promise<object>} - ユーザー情報（user_id, user_name, private）
+ * @returns {Promise<object>} - ユーザー情報（user_id, user_name, is_private
  */
 function getUserById(userId) {
-    return getQuery('SELECT user_id, user_name, private FROM users WHERE user_id = ?', [userId]);
+    return getQuery('SELECT user_id, user_name, is_private FROM users WHERE user_id = ?', [userId]);
 }
 
 /**
@@ -85,10 +85,10 @@ function updateLastLogin(userId) {
 /**
  * ユーザー情報の更新（動的クエリで複数フィールドを一括更新）
  * @param {string} userId - ユーザーID
- * @param {object} data - 更新データ { username, password, private }
+ * @param {object} data - 更新データ { username, password, is_private }
  * @returns {Promise<number>} - 更新件数
  */
-async function updateUser(userId, { username, password, private: isPrivate }) {
+async function updateUser(userId, { username, password, is_private }) {
     const fields = [];
     const params = [];
 
@@ -105,9 +105,9 @@ async function updateUser(userId, { username, password, private: isPrivate }) {
             throw { status: 500, message: 'Database error occurred.' };
         }
     }
-    if (typeof isPrivate !== 'undefined') {
-        fields.push('private = ?');
-        params.push(isPrivate);
+    if (typeof is_private !== 'undefined') {
+        fields.push('is_private = ?');
+        params.push(is_private);
     }
 
     if (fields.length === 0) {
@@ -137,7 +137,7 @@ function deleteUser(userId) {
  */
 function getUserList(limit, offset) {
     // ※データベース上のprivateカラムが文字列の場合は"false"と比較
-    return allQuery('SELECT user_id, user_name FROM users WHERE private = ? LIMIT ? OFFSET ?', ["false", limit, offset]);
+    return allQuery('SELECT user_id, user_name FROM users WHERE is_private = ? LIMIT ? OFFSET ?', ["false", limit, offset]);
 }
 
 /**
@@ -150,7 +150,7 @@ function getUserDetails(userId) {
     SELECT u.user_id, u.user_name, p.profile_image, p.info
     FROM users u
     JOIN user_profiles p ON u.user_id = p.user_id
-    WHERE u.user_id = ? AND u.private = ?
+    WHERE u.user_id = ? AND u.is_private = ?
   `;
     return getQuery(query, [userId, "false"]);
 }
@@ -165,7 +165,7 @@ function getUserDetails(userId) {
 function searchUsers(userName, limit, offset) {
     const query = `
     SELECT user_id, user_name FROM users
-    WHERE private = ? AND user_name LIKE ?
+    WHERE is_private = ? AND user_name LIKE ?
     LIMIT ? OFFSET ?
   `;
     return allQuery(query, ["false", `%${userName}%`, limit, offset]);

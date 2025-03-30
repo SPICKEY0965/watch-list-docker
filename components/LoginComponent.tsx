@@ -49,7 +49,7 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
       const requestData: any = { username, password };
 
       if (isRegistering) {
-        requestData.private = isPrivate.toString();
+        requestData.is_private = isPrivate.toString();
       }
 
       const response = await axios.post(
@@ -145,9 +145,9 @@ export function LoginComponent({ onLogin }: LoginComponentProps) {
           </div>
           {isRegistering && (
             <div>
-              <Label htmlFor="private" className="text-white">プライベートアカウント</Label>
+              <Label htmlFor="is_private" className="text-white">プライベートアカウント</Label>
               <input
-                id="private"
+                id="is_private"
                 type="checkbox"
                 checked={isPrivate}
                 onChange={(e) => setIsPrivate(e.target.checked)}

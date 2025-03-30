@@ -158,7 +158,15 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                                         {contents.rating === "unrated" ? "未評価" : contents.rating}
                                     </Badge>
                                 </div>
-
+                                <p className="text-sm">
+                                <strong>シェア:</strong> {
+                                    {
+                                        "true": '非公開',
+                                        "false": '公開',
+                                    }[contents.is_private]
+                                }
+                                </p>
+                                
                                 <Button className="w-full" variant="default">
                                     <a
                                         href={convertToUniversalLink(contents.streaming_url, navigator.userAgent)}

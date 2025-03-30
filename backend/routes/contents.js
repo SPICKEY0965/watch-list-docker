@@ -68,7 +68,7 @@ router.get('/contents', async (req, res) => {
 
 // POST /contents (protected route)
 router.post('/contents', auth, async (req, res, next) => {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, private: isPrivate, broadcastDate } = req.body;
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = req.body;
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
@@ -90,7 +90,7 @@ router.post('/contents', auth, async (req, res, next) => {
             season,
             cour,
             airing_status,
-            private: isPrivate,
+            is_private,
             broadcastDate,
             added_by,
         });
@@ -108,7 +108,7 @@ router.post('/contents', auth, async (req, res, next) => {
 // PUT /contents/:id: コンテンツ更新
 router.put('/contents/:id', auth, isPrivateCheck, async (req, res, next) => {
     const { id } = req.params;
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, private: isPrivate, broadcastDate } = req.body;
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = req.body;
     if (!title || title.trim() === '') {
         return res.status(400).json({ error: 'Title is required.' });
     }
@@ -129,7 +129,7 @@ router.put('/contents/:id', auth, isPrivateCheck, async (req, res, next) => {
             season,
             cour,
             airing_status,
-            private: isPrivate,
+            is_private,
             broadcastDate,
         });
 

@@ -15,9 +15,9 @@ import { runQuery, getQuery, allQuery } from './query.js';
 function getContents({ limit, offset, sortBy, sortOrder, airing_status, content_type }) {
     return new Promise((resolve, reject) => {
         let query = `
-            SELECT content_id, title, episodes, image, streaming_url, content_type, season, cour, airing_status, broadcastDate
+            SELECT content_id, title, episodes, image, streaming_url, content_type, season, cour, airing_status, broadcastDate, is_private
             FROM contents
-            WHERE private = "false"
+            WHERE is_private = FALSE
         `;
         const queryParams = [];
 
@@ -54,22 +54,22 @@ function getContents({ limit, offset, sortBy, sortOrder, airing_status, content_
  * @param {string} data.season - シーズン
  * @param {string} data.cour - クール
  * @param {string} data.airing_status - 放送ステータス
- * @param {boolean} data.private - 非公開フラグ
+ * @param {string} data.is_private - 非公開フラグ
  * @param {string} data.broadcastDate - 放送開始日時
  * @param {number} data.added_by - 追加ユーザーのID
  * @returns {Promise<number>} - 挿入されたコンテンツのID
  */
 function addContent(data) {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, private: isPrivate, broadcastDate, added_by } = data;
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, added_by } = data;
     return new Promise((resolve, reject) => {
         const query = `
       INSERT INTO contents 
-      (title, episodes, image, streaming_url, content_type, season, cour, airing_status, private, added_by, broadcastDate, added_at, updated_at)
+      (title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate, added_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `;
         db.run(
             query,
-            [title, episodes, image, streaming_url, content_type, season, cour, airing_status, isPrivate, added_by, broadcastDate],
+            [title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate],
             function (err) {
                 if (err) {
                     return reject(err);
@@ -91,21 +91,21 @@ function addContent(data) {
  * @param {string} data.content_type
  * @param {string} data.season
  * @param {string} data.cour
- * @param {string} data.airing_statusj
- * @param {boolean} data.private
+ * @param {string} data.airing_status
+ * @param {string} data.is_private
  * @param {string} data.broadcastDate
  * @param {number} userId - 更新を行うユーザーのID
  * @returns {Promise<number>} - 更新されたレコード数
  */
 function updateContent(id, data, userId) {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, private: isPrivate, broadcastDate } = data;
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = data;
     return new Promise((resolve, reject) => {
         const query = `
             UPDATE contents
-            SET title = ?, episodes = ?, image = ?, streaming_url = ?, content_type = ?, season = ?, cour = ?, airing_status = ?, private = ?, broadcastDate = ?, updated_at = datetime('now')
+            SET title = ?, episodes = ?, image = ?, streaming_url = ?, content_type = ?, season = ?, cour = ?, airing_status = ?, is_private = ?, broadcastDate = ?, updated_at = datetime('now')
             WHERE content_id = ? AND added_by = ?
         `;
-        db.run(query, [title, episodes, image, streaming_url, content_type, season, cour, airing_status, isPrivate, broadcastDate, id, userId], function (err) {
+        db.run(query, [title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, id, userId], function (err) {
             if (err) {
                 return reject(err);
             }

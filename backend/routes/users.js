@@ -25,12 +25,12 @@ const router = express.Router();
 
 // ユーザー登録
 router.post('/users', async (req, res) => {
-    const { username, password, private: isPrivate } = req.body;
+    const { username, password, is_private } = req.body;
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
     try {
-        const userId = await registerUser({ username, password, private: isPrivate });
+        const userId = await registerUser({ username, password, is_private });
         res.status(201).json({ message: 'User registered successfully.', userId });
     } catch (error) {
         console.error('Registration error:', error);
@@ -69,9 +69,9 @@ router.post('/login', async (req, res) => {
 // ユーザー情報の更新
 router.put('/users', auth, async (req, res) => {
     const userId = req.userId;
-    const { username, password, private: isPrivate } = req.body;
+    const { username, password, is_private } = req.body;
     try {
-        const changes = await updateUser(userId, { username, password, private: isPrivate });
+        const changes = await updateUser(userId, { username, password, is_private });
         if (changes === 0) {
             return res.status(400).json({ error: 'No fields provided for update or no changes made.' });
         }

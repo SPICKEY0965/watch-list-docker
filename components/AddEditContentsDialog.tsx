@@ -45,6 +45,10 @@ export function AddEditContentsDialog({
 
     const { token, handleLogout } = useAuth();
     const apiClient = useApiClient(token, handleLogout);
+    const options = [
+        { value: "false", label: '公開' },
+        { value: "true", label: '非公開' }
+    ];
 
     // 放送日から曜日を自動的に判定する関数
     const getDayFromDate = (dateString: string | number | Date) => {
@@ -345,6 +349,27 @@ export function AddEditContentsDialog({
                                 <SelectContent>
                                     {['SS', 'S', 'A', 'B', 'C'].map((rating) => (
                                         <SelectItem key={rating} value={rating}>{rating}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="share" className="text-sm font-medium leading-none">
+                                シェア
+                            </Label>
+                            <Select
+                                value={String(contents.is_private)}
+                                onValueChange={(value: 'false' | 'true') =>
+                                    setContents({ ...contents, is_private: value })
+                                }>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="非公開" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.map(({ value, label }) => (
+                                        <SelectItem key={value} value={value}>
+                                            {label}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
