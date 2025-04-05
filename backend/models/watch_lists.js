@@ -5,22 +5,40 @@
 import { runQuery, getQuery, allQuery } from './query.js';
 
 /**
- * Watchlistの取得
- *
- * @param {string} userId - ユーザーID
- * @param {number} limit - 件数上限
+ * getWatchlist
+ * 指定されたユーザーIDに属するウォッチリストを取得します。
+ * @param {number} userId - ユーザーID
+ * @param {number} limit - 取得件数
  * @param {number} offset - オフセット
- * @param {string} sortBy - ソート対象カラム名
- * @param {string} sortOrder - ソート順 ('ASC' | 'DESC')
- * @param {string} [airing_status] - 放送ステータス ('Upcoming', 'Airing', 'Finished Airing')
- * @param {string} [content_type] - コンテンツタイプ ('documentary', 'drama', 'anime')
- * @param {string} [status] - 視聴ステータス
- * @param {string} [rating] - レーティング
- * @returns {Promise<Array>} - ウォッチリスト一覧
+ * @param {string} sortBy - ソート対象 (例: 'title', 'episodes')
+ * @param {string} sortOrder - ソート順 (例: 'ASC', 'DESC')
+ * @param {string} airing_status - 放送ステータス
+ * @param {string} content_type - コンテンツ種別
+ * @param {string} status - ウォッチ状況
+ * @param {string} rating - 評価
  */
-async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_status, content_type, status, rating, serviceId) {
+async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_status, content_type, status, rating) {
     let query = `
-        SELECT w.content_id, w.status, w.rating, c.title, c.episodes, c.image, c.streaming_url, c.content_type, c.season, c.cour, c.airing_status, c.broadcastDate, c.is_private
+        SELECT 
+            w.content_id, w.status, 
+            CASE 
+                WHEN w.rating = 'SS' THEN 0 
+                WHEN w.rating = 'S' THEN 1 
+                WHEN w.rating = 'A' THEN 2 
+                WHEN w.rating = 'B' THEN 3 
+                WHEN w.rating = 'C' THEN 4 
+                ELSE 5 
+            END AS rating_order, 
+            w.rating, 
+            c.title, c.episodes, c.image, c.streaming_url, 
+            c.content_type, c.season, c.cour, c.airing_status, 
+            c.broadcastDate,
+            CASE 
+                WHEN date(c.broadcastDate) > date('now') THEN date(c.broadcastDate)
+                WHEN date(c.broadcastDate, '+' || ((c.episodes - 1) * 7) || ' days') < date('now') THEN date(c.broadcastDate, '+' || ((c.episodes - 1) * 7) || ' days')
+                ELSE date(c.broadcastDate, '+' || ((cast((julianday('now') - julianday(c.broadcastDate)) / 7 as integer)) * 7) || ' days')
+            END AS last_update_date,
+            c.is_private
         FROM watch_lists w
         INNER JOIN contents c ON w.content_id = c.content_id
         WHERE w.user_id = ?
@@ -43,14 +61,15 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
         query += ' AND w.rating = ?';
         queryParams.push(rating);
     }
-    if (serviceId) {
+    /* if (serviceId) {
         query += ' AND cs.service_id = ?';
         queryParams.push(serviceId);
-    }
+    } */
 
     // sortBy, sortOrder はルーティング側で検証済み
     query += ` ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`;
     queryParams.push(limit, offset);
+
     return allQuery(query, queryParams);
 }
 

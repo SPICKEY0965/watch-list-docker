@@ -12,7 +12,7 @@ router.get('/watchlists', auth, async (req, res) => {
         const limit = Math.min(parseInt(req.query.limit) || 10, 50);
         const offset = parseInt(req.query.offset) || 0;
         const sortByParam = (req.query.sortBy || 'BROADCAST').toUpperCase();
-        const sortOrder = (req.query.sortOrder || 'ASC').toUpperCase();
+        const sortOrder = (req.query.sortOrder || 'DESC').toUpperCase();
         const protocol = req.protocol;
         const host = req.get('host');
         const userId = req.userId;
@@ -22,12 +22,16 @@ router.get('/watchlists', auth, async (req, res) => {
         }
 
         const allowedSortByFields = {
-            BROADCAST: 'broadcastDate',
-            TITLE: 'title',
+            RECENTLY_UPDATED: 'last_update_date', // 最近更新
+            TITLE: 'title', // タイトル順
+            BROADCAST: 'broadcastDate', // 放送日順
+            RATING: 'rating_order' // レーティング
         };
+
         if (!allowedSortByFields.hasOwnProperty(sortByParam)) {
             return res.status(400).json({ error: 'Invalid sortBy parameter.' });
         }
+
         if (sortOrder !== 'ASC' && sortOrder !== 'DESC') {
             return res.status(400).json({ error: 'Invalid sortOrder parameter. Use ASC or DESC.' });
         }
