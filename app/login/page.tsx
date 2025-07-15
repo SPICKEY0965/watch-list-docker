@@ -1,26 +1,26 @@
 "use client";
 
 import { LoginComponent } from "@/components/LoginComponent";
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';  // useRouterをインポート
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-    const [token, setToken] = useState<string | null>(null);
-    const router = useRouter();  // useRouterフックを使用
+    const { token, setToken: handleLogin } = useAuth();
+    const router = useRouter();
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            setToken(storedToken);
+        // useAuthフックがlocalStorageからトークンを読み込むので、
+        // トークンが存在すればリダイレクトする
+        if (token) {
             router.push('/home');
         }
-    }, []);
+    }, [token, router]);
 
-    const handleLogin = (newToken: string) => {
-        setToken(newToken);
-        localStorage.setItem('token', newToken);
-        router.push('/home');  // ログイン成功時にhomeページへ移動
-    };
+    // トークンがある場合は、リダイレクトが完了するまで何も表示しない
+    if (token) {
+        return null;
+    }
 
     return <LoginComponent onLogin={handleLogin} />;
 }

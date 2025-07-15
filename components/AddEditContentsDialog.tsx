@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Contents, ContentsRating, ContentsStatus } from "./types";
+import { Textarea } from "@/components/ui/textarea"; // Textareaをインポート
+import { Contents, ContentsRating, ContentsStatus, SimilarContent } from "./types";
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -42,6 +43,9 @@ export function AddEditContentsDialog({
     const [contents, setContents] = useState<Omit<Contents, "content_id">>(initialContentsState);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [similarContents, setSimilarContents] = useState<SimilarContent[]>([]);
+    const [prediction, setPrediction] = useState<number | null>(null);
+
 
     const { token, handleLogout } = useAuth();
     const apiClient = useApiClient(token, handleLogout);
@@ -113,13 +117,45 @@ export function AddEditContentsDialog({
 
 
     useEffect(() => {
+        const fetchSimilar = async (contentId: number) => {
+            try {
+                const response = await apiClient.get(`/api/contents/${contentId}/similar`);
+                setSimilarContents(response.data);
+            } catch (error) {
+                console.error("Failed to fetch similar contents:", error);
+            }
+        };
+
         if (contentsToEdit) {
             setContents(contentsToEdit);
+            fetchSimilar(contentsToEdit.content_id);
         } else {
             setContents(initialContentsState);
+            setSimilarContents([]);
         }
         setErrors({});
-    }, [contentsToEdit]);
+        setPrediction(null);
+    }, [contentsToEdit, apiClient]);
+
+    useEffect(() => {
+        const handler = setTimeout(async () => {
+            if (contents.description && contents.description.trim() !== '') {
+                try {
+                    const response = await apiClient.post('/api/contents/predict-rating', { description: contents.description });
+                    setPrediction(response.data.prediction);
+                } catch (error) {
+                    console.error("Failed to fetch prediction:", error);
+                    setPrediction(null);
+                }
+            } else {
+                setPrediction(null);
+            }
+        }, 500); // 500msのデバウンス
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [contents.description, apiClient]);
 
     const validateForm = () => {
         const newErrors: { [key: string]: string } = {};
@@ -213,8 +249,25 @@ export function AddEditContentsDialog({
                             {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="episodes" className="text-sm font-medium leading-none">
-                                話数
+                            <Label htmlFor="description" className="text-sm font-medium leading-none">
+                                概要
+                            </Label>
+                            <Textarea
+                                id="description"
+                                value={contents.description || ""}
+                                onChange={(e) => setContents({ ...contents, description: e.target.value })}
+                                className="w-full"
+                                placeholder="あらすじや感想など"
+                            />
+                            {prediction !== null && (
+                                <p className="text-sm text-blue-500 mt-1">
+                                    あなたへのおすすめ度: <strong>{prediction}%</strong>
+                                </p>
+                            )}
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="image" className="text-sm font-medium leading-none">
+                                画像URL
                             </Label>
                             <Input
                                 id="episodes"
@@ -382,6 +435,20 @@ export function AddEditContentsDialog({
                         <Button type="submit" className="w-full">{contentsToEdit ? "更新" : "追加"}</Button>
                     </div>
                 </form>
+
+                {contentsToEdit && similarContents.length > 0 && (
+                    <div className="mt-4">
+                        <h3 className="text-lg font-semibold mb-2">類似の作品</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            {similarContents.map(item => (
+                                <div key={item.content_id} className="text-center">
+                                    <img src={item.image} alt={item.title} className="w-full h-auto rounded-md object-cover" />
+                                    <p className="text-xs mt-1 truncate">{item.title}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );

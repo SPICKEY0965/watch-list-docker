@@ -24,7 +24,12 @@ const sortMappings: Record<string, { sortBy: string; sortOrder: string }> = {
     'Rating': { sortBy: 'RATING', sortOrder: 'ASC' }
 };
 
-export function WatchListComponent() {
+interface WatchListComponentProps {
+    onUpdateAll?: () => void;
+    isUpdating?: boolean;
+}
+
+export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListComponentProps) {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
     const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>('All');
     const [activeRating, setActiveRating] = useState<ContentsRating | 'All' | null>('All');
@@ -301,6 +306,8 @@ export function WatchListComponent() {
                     onAdd={() => setIsAddDialogOpen(true)}
                     onLogout={handleLogout}
                     onOpenFilter={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                    onUpdateAll={onUpdateAll}
+                    isUpdating={isUpdating}
                 />
 
                 {isFilterMenuOpen && (

@@ -17,4 +17,12 @@ export interface Contents {
     cour: number;
     status: ContentsStatus;
     is_private: PrivateStatus;
+    description?: string;
+}
+
+export interface SimilarContent {
+    content_id: number;
+    title: string;
+    image: string;
+    similarity: number;
 }

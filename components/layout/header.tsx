@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { ContentsRating, ContentsStatus } from "@/components/types"
 import { Filter, Plus, Settings } from "lucide-react"
+import Link from "next/link"
 
 //
 // ヘッダーコンポーネント（モバイルとデスクトップ）
@@ -19,6 +20,8 @@ interface HeaderProps {
     onAdd: () => void
     onLogout: () => void
     onOpenFilter: () => void
+    onUpdateAll?: () => void
+    isUpdating?: boolean
 }
 
 export default function Header({
@@ -31,6 +34,8 @@ export default function Header({
     onAdd,
     onLogout,
     onOpenFilter,
+    onUpdateAll,
+    isUpdating,
 }: HeaderProps) {
     // 共通の設定ボタン
     const renderSettingsButton = () => (
@@ -41,7 +46,21 @@ export default function Header({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56 bg-gray-800 border-gray-700 text-white">
-                <div className="grid gap-4">
+                <div className="grid gap-1">
+                    <Button variant="ghost" className="w-full justify-start hover:bg-gray-700" asChild>
+                        <Link href="/profile/analysis">視聴傾向を分析</Link>
+                    </Button>
+                    {onUpdateAll && (
+                        <Button
+                            variant="ghost"
+                            className="w-full justify-start hover:bg-gray-700"
+                            onClick={onUpdateAll}
+                            disabled={isUpdating}
+                        >
+                            {isUpdating ? "更新中..." : "全コンテンツの情報を更新"}
+                        </Button>
+                    )}
+                    <hr className="border-gray-700 my-1" />
                     <Button variant="ghost" className="w-full justify-start hover:bg-gray-700" onClick={onLogout}>
                         ログアウト
                     </Button>
@@ -167,4 +186,3 @@ export default function Header({
         </div>
     )
 }
-

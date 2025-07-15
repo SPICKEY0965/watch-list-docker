@@ -60,6 +60,7 @@ async function fetchAmazonVideoMetadata(contentId) {
         let imageUrl = $('img.FHb5CR.Ah1hNY[data-testid="base-image"]').attr('src');
         let broadcastDate = $('[data-testid="episode-release-date"]').first().text().trim();
         let title = $('[data-automation-id="title"]').text().trim();
+        let description = $('div._5tB6mN.dv-dp-node-synopsis span._1H6ABQ').text().trim();
 
         if (broadcastDate) {
             broadcastDate = formatDate(broadcastDate);
@@ -71,10 +72,10 @@ async function fetchAmazonVideoMetadata(contentId) {
                 imageUrl = pictureTag.find('img').first().attr('src');
             }
         }
-        return { imageUrl, broadcastDate, title };
+        return { imageUrl, broadcastDate, title, description };
     } catch (error) {
         console.error(`エラーが発生しました: ${error}`);
-        return { imageUrl: null, broadcastDate: null, title: null };
+        return { imageUrl: null, broadcastDate: null, title: null, description: null };
     }
 }
 
@@ -90,11 +91,12 @@ export default async function extractAmazonVideoMetadataFromUrl(url) {
     if (match && match[1]) {
         const contentId = match[1];
         console.log("抽出したID:", contentId);
-        const { imageUrl, broadcastDate, title } = await fetchAmazonVideoMetadata(contentId);
+        const { imageUrl, broadcastDate, title, description } = await fetchAmazonVideoMetadata(contentId);
         console.log(`コンテンツID '${contentId}' の画像のURL: ${imageUrl}`);
         console.log(`放送日時: ${broadcastDate}`);
-        console.log(`タイトル: ${title}`)
-        return { imageUrl, broadcastDate, title };
+        console.log(`タイトル: ${title}`);
+        console.log(`説明: ${description}`);
+        return { imageUrl, broadcastDate, title, description };
     } else {
         console.log("AmazonのURLが見つからなかったか、IDの抽出に失敗しました。");
         return null;

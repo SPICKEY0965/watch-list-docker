@@ -19,6 +19,8 @@ import imagesRoutes from './routes/images.js';
 import metadataRoutes from './routes/metadata.js';
 import watchlistsRoutes from './routes/watch_lists.js';
 import usersRoutes from './routes/users.js';
+import batchRoutes from './routes/batch.js';
+import embeddingRoutes from './routes/embedding.js';
 
 const app = express();
 const PORT = 5000;
@@ -63,8 +65,9 @@ import('./migrate.js').then(() => {
     app.use('/api', imagesRoutes);
     app.use('/api', metadataRoutes);
     app.use('/api', watchlistsRoutes);
-    app.use('/api', contentsRoutes);
     app.use('/api', usersRoutes);
+    app.use('/api', batchRoutes);
+    app.use('/api', embeddingRoutes);
 
     // Start the server
     app.listen(PORT, () => {
