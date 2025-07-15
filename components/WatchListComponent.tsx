@@ -327,9 +327,9 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                    {displayedContentsList.map(item => (
+                    {displayedContentsList.map((item, index) => (
                         <ContentsCard
-                            key={item.content_id}
+                            key={item.content_id || `content-${index}`}
                             contents={item}
                             onEdit={(content) => setContentsToEdit(content)}
                             onDelete={handleDeleteContents}

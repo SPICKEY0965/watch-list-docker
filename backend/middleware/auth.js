@@ -1,12 +1,12 @@
-import jwt from 'jsonwebtoken';
+import { verify } from 'hono/jwt'
 import { db } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const auth = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
+const auth = async (c, next) => {
+    const authHeader = c.req.header('authorization');
     if (!authHeader) {
-        return res.status(403).json({ error: 'No token provided.' });
+        return c.json({ error: 'No token provided.' }, 403);
     }
 
     let token;
@@ -17,38 +17,41 @@ const auth = (req, res, next) => {
     }
 
     if (!token) {
-        return res.status(403).json({ error: 'Malformed token.' });
+        return c.json({ error: 'Malformed token.' }, 403);
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            if (err.name === 'TokenExpiredError') {
-                // トークンの有効期限が切れた場合の処理
-                return res.status(401).json({ error: 'Token has expired.' });
-            } else if (err.name === 'JsonWebTokenError') {
-                // トークンが無効な場合の処理
-                return res.status(401).json({ error: 'Invalid token.' });
-            } else {
-                // その他の予期しないエラーをキャッチ
-                console.error('Token verification error:', err);
-                return res.status(500).json({ error: 'Failed to authenticate token.' });
-            }
+    try {
+        const decoded = await verify(token, JWT_SECRET, 'HS256');
+        if (!decoded || !decoded.id) {
+            return c.json({ error: 'Invalid token.' }, 401);
         }
 
-        // データベースでユーザーの存在を確認
-        db.get('SELECT * FROM users WHERE user_id = ?', [decoded.id], (dbErr, user) => {
-            if (dbErr) {
-                console.error('Database error during token verification:', dbErr);
-                return res.status(500).json({ error: 'Database error occurred.' });
-            }
-            if (!user) {
-                return res.status(401).json({ error: 'Invalid token. User does not exist.' });
-            }
-
-            req.userId = decoded.id;
-            next();
+        const user = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM users WHERE user_id = ?', [decoded.id], (dbErr, user) => {
+                if (dbErr) {
+                    console.error('Database error during token verification:', dbErr);
+                    return reject(new Error('Database error occurred.'));
+                }
+                resolve(user);
+            });
         });
-    });
+
+        if (!user) {
+            return c.json({ error: 'Invalid token. User does not exist.' }, 401);
+        }
+
+        c.set('userId', decoded.id);
+        await next();
+    } catch (err) {
+        if (err.name === 'JwtTokenExpired') {
+            return c.json({ error: 'Token has expired.' }, 401);
+        }
+        if (err.name === 'JwtTokenInvalid') {
+            return c.json({ error: 'Invalid token.' }, 401);
+        }
+        console.error('Token verification error:', err);
+        return c.json({ error: 'Failed to authenticate token.' }, 500);
+    }
 };
 
 

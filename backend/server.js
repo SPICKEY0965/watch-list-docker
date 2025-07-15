@@ -1,7 +1,7 @@
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import morgan from 'morgan';
+import { Hono } from 'hono';
+import { serve } from '@hono/node-server';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -23,24 +23,25 @@ import batchRoutes from './routes/batch.js';
 import embeddingRoutes from './routes/embedding.js';
 import { seedTags } from './models/preferenceAnalysis.js';
 
-const app = express();
+const app = new Hono();
 const PORT = 5000;
 
 // Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(morgan('combined', { stream: fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }) }));
-app.use(morgan('combined'));
+app.use('*', cors());
+app.use('*', logger((str) => fs.appendFileSync(path.join(__dirname, 'access.log'), str)));
+app.use('*', logger());
 
 // Error logging middleware
-app.use((err, req, res, next) => {
+app.onError((err, c) => {
     fs.appendFile('error.log', `${new Date().toISOString()} - ${err.message}\n`, (fsErr) => {
         if (fsErr) {
             console.error('Error logging to file', fsErr);
         }
     });
-    next(err);
+    console.error('Error:', err);
+    return c.text('Internal Server Error', 500);
 });
+
 
 function getLocalIpAddress() {
     const interfaces = os.networkInterfaces();
@@ -70,19 +71,23 @@ const startServer = async () => {
         console.log('Tag seeding completed.');
 
         // 3. ルーティングを設定
-        app.use('', rootRoutes);
-        app.use('/api', contentsRoutes);
-        app.use('/api', imagesRoutes);
-        app.use('/api', metadataRoutes);
-        app.use('/api', watchlistsRoutes);
-        app.use('/api', usersRoutes);
-        app.use('/api', batchRoutes);
-        app.use('/api', embeddingRoutes);
+        app.route('/', rootRoutes);
+        app.route('/api', contentsRoutes);
+        app.route('/api', imagesRoutes);
+        app.route('/api', metadataRoutes);
+        app.route('/api', watchlistsRoutes);
+        app.route('/api', usersRoutes);
+        app.route('/api', batchRoutes);
+        app.route('/api', embeddingRoutes);
 
         // 4. サーバーを起動
-        app.listen(PORT, () => {
-            console.log(`Server running on http://${ipAddress}:${PORT}`);
+        serve({
+            fetch: app.fetch,
+            port: PORT
+        }, (info) => {
+            console.log(`Server running on http://${ipAddress}:${info.port}`);
         });
+
     } catch (err) {
         console.error('Failed to start server:', err);
         process.exit(1);

@@ -1,9 +1,9 @@
-import express from 'express';
+import { Hono } from 'hono';
 
-const router = express.Router();
+const app = new Hono();
 
-router.get('/', (req, res) => {
-    res.status(200).json('watch-list-docker is running');
+app.get('/', (c) => {
+    return c.json('watch-list-docker is running');
 });
 
-export default router;
+export default app;

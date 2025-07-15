@@ -97,15 +97,15 @@ export function AddEditContentsDialog({
     const fetchMetaDataFromVideoUrl = useCallback(
         async (
             videoUrl: string
-        ): Promise<{ imageUrl: string | null; broadcastDate: string | null, title: string | null } | null> => {
+        ): Promise<{ imageUrl: string | null; broadcastDate: string | null, title: string | null, description: string | null } | null> => {
             if (!videoUrl) {
                 setErrors(prev => ({ ...prev, streaming_url: "動画URLを入力してください。" }));
                 return null;
             }
             try {
                 const response = await apiClient.post('/api/metadata', { url: videoUrl });
-                const { imageUrl, broadcastDate, title } = response.data;
-                return { imageUrl: imageUrl || null, broadcastDate: broadcastDate || null, title: title || null };
+                const { imageUrl, broadcastDate, title, description } = response.data;
+                return { imageUrl: imageUrl || null, broadcastDate: broadcastDate || null, title: title || null, description: description || null };
             } catch (error) {
                 console.error("Metadataの取得に失敗しました:", error);
                 setErrors(prev => ({ ...prev, streaming_url: "取得に失敗しました。" }));
@@ -207,13 +207,14 @@ export function AddEditContentsDialog({
 
         setLoading(false);
 
-        if (metadata && metadata.imageUrl && metadata.broadcastDate && metadata.title) {
-            setContents({
-                ...contents,
-                image: metadata.imageUrl,
-                broadcastDate: metadata.broadcastDate,
-                title: metadata.title,
-            });
+        if (metadata) {
+            setContents(prev => ({
+                ...prev,
+                image: metadata.imageUrl || prev.image,
+                broadcastDate: metadata.broadcastDate || prev.broadcastDate,
+                title: metadata.title || prev.title,
+                description: metadata.description || prev.description,
+            }));
         }
     };
 

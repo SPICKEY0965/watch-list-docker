@@ -1,25 +1,25 @@
-import express from 'express';
+import { Hono } from 'hono';
 import extractAmazonVideoMetadataFromUrl from '../utils/autoFetchMeta.js';
 
-const router = express.Router();
+const app = new Hono();
 
-router.post('/metadata', async (req, res) => {
+app.post('/metadata', async (c) => {
     try {
-        const { url } = req.body;
+        const { url } = await c.req.json();
         if (!url) {
-            return res.status(400).json({ error: 'Invalid request: Missing URL.' });
+            return c.json({ error: 'Invalid request: Missing URL.' }, 400);
         }
 
-        const { imageUrl, broadcastDate, title } = await extractAmazonVideoMetadataFromUrl(url);
-        if (!imageUrl && !broadcastDate && title) {
-            return res.status(404).json({ error: 'Image URL or broadcast Date extraction failed.' });
+        const { imageUrl, broadcastDate, title, description } = await extractAmazonVideoMetadataFromUrl(url);
+        if (!imageUrl && !broadcastDate && !title) {
+            return c.json({ error: 'Image URL or broadcast Date extraction failed.' }, 404);
         }
 
-        return res.status(200).json({ imageUrl, broadcastDate, title });
+        return c.json({ imageUrl, broadcastDate, title, description }, 200);
     } catch (err) {
         console.error('Web scraping failed:', err);
-        return res.status(500).json({ error: 'Internal server error.' });
+        return c.json({ error: 'Internal server error.' }, 500);
     }
 });
 
-export default router;
+export default app;

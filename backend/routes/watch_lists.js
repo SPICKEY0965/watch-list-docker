@@ -1,24 +1,25 @@
-import express from 'express';
+import { Hono } from 'hono';
 import { db } from '../db.js';
 import auth from '../middleware/auth.js';
 import { editHistoryMiddleware } from '../middleware/editHistory.js';
 import { getWatchlist, addWatchlist, addWatchlistFromContent, updateWatchlist, deleteWatchlist, searchWatchlist, } from '../models/watch_lists.js';
 import { getContents, addContent, updateContent, deleteContent, } from '../models/contents.js';
 import { downloadImage, isExternalImage } from '../utils/imageDownload.js';
-const router = express.Router();
 
-router.get('/watchlists', auth, async (req, res) => {
+const app = new Hono();
+
+app.get('/watchlists', auth, async (c) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        const offset = parseInt(req.query.offset) || 0;
-        const sortByParam = (req.query.sortBy || 'BROADCAST').toUpperCase();
-        const sortOrder = (req.query.sortOrder || 'DESC').toUpperCase();
-        const protocol = req.protocol;
-        const host = req.get('host');
-        const userId = req.userId;
+        const limit = Math.min(parseInt(c.req.query('limit')) || 10, 50);
+        const offset = parseInt(c.req.query('offset')) || 0;
+        const sortByParam = (c.req.query('sortBy') || 'BROADCAST').toUpperCase();
+        const sortOrder = (c.req.query('sortOrder') || 'DESC').toUpperCase();
+        const protocol = c.req.url.startsWith('https') ? 'https' : 'http';
+        const host = c.req.header('host');
+        const userId = c.get('userId');
 
         if (isNaN(limit) || isNaN(offset) || limit <= 0 || offset < 0) {
-            return res.status(400).json({ error: 'Invalid limit or offset parameters.' });
+            return c.json({ error: 'Invalid limit or offset parameters.' }, 400);
         }
 
         const allowedSortByFields = {
@@ -29,22 +30,27 @@ router.get('/watchlists', auth, async (req, res) => {
         };
 
         if (!allowedSortByFields.hasOwnProperty(sortByParam)) {
-            return res.status(400).json({ error: 'Invalid sortBy parameter.' });
+            return c.json({ error: 'Invalid sortBy parameter.' }, 400);
         }
 
         if (sortOrder !== 'ASC' && sortOrder !== 'DESC') {
-            return res.status(400).json({ error: 'Invalid sortOrder parameter. Use ASC or DESC.' });
+            return c.json({ error: 'Invalid sortOrder parameter. Use ASC or DESC.' }, 400);
         }
 
         const sortBy = allowedSortByFields[sortByParam];
-        const { airing_status, content_type, status, rating, search } = req.query;
+        const airing_status = c.req.query('airing_status');
+        const content_type = c.req.query('content_type');
+        const status = c.req.query('status');
+        const rating = c.req.query('rating');
+        const search = c.req.query('search');
+
         const allowedAiringStatuses = ['Upcoming', 'Airing', 'Finished Airing'];
         if (airing_status && !allowedAiringStatuses.includes(airing_status)) {
-            return res.status(400).json({ error: 'Invalid airing_status parameter.' });
+            return c.json({ error: 'Invalid airing_status parameter.' }, 400);
         }
         const allowedContentTypes = ['documentary', 'drama', 'anime'];
         if (content_type && !allowedContentTypes.includes(content_type)) {
-            return res.status(400).json({ error: 'Invalid content_type parameter.' });
+            return c.json({ error: 'Invalid content_type parameter.' }, 400);
         }
 
         const contents = await getWatchlist(
@@ -67,18 +73,19 @@ router.get('/watchlists', auth, async (req, res) => {
                 : row.image,
         }));
 
-        res.status(200).json(transformedRows);
+        return c.json(transformedRows, 200);
     } catch (err) {
         console.error('Error fetching contents:', err);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
-router.post('/watchlists', auth, async (req, res) => {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating } = req.body;
+app.post('/watchlists', auth, async (c) => {
+    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating } = await c.req.json();
     if (!title || title.trim() === '') {
-        return res.status(400).json({ error: 'Title is required.' });
+        return c.json({ error: 'Title is required.' }, 400);
     }
+    const userId = c.get('userId');
 
     let filename = null;
     if (image && isExternalImage) {
@@ -86,113 +93,70 @@ router.post('/watchlists', auth, async (req, res) => {
         filename = result.relativePhysicalPath;
     }
 
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION');
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
 
-        const contentQuery = `
-            INSERT INTO contents (title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate, added_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        `;
-
-        db.run(contentQuery, [title, episodes, filename, streaming_url, content_type, season, cour, airing_status, is_private, req.userId, broadcastDate], function (err) {
-            if (err) {
-                console.error('Error inserting content:', err);
-                db.run('ROLLBACK');
-                return res.status(500).json({ error: 'Database error occurred.' });
-            }
-
-            const contentId = this.lastID;
-
-            const watchListQuery = `
-                INSERT INTO watch_lists (user_id, content_id, status, rating, added_at, updated_at)
-                VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+            const contentQuery = `
+                INSERT INTO contents (title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, added_by, broadcastDate, added_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             `;
 
-            db.run(watchListQuery, [req.userId, contentId, status, rating], function (err) {
+            db.run(contentQuery, [title, episodes, filename, streaming_url, content_type, season, cour, airing_status, is_private, userId, broadcastDate], function (err) {
                 if (err) {
-                    console.error('Error inserting into watch list:', err);
+                    console.error('Error inserting content:', err);
                     db.run('ROLLBACK');
-                    return res.status(500).json({ error: 'Database error occurred.' });
+                    return resolve(c.json({ error: 'Database error occurred.' }, 500));
                 }
 
-                db.run('COMMIT');
-                const responseContent = {
-                    id: contentId,
-                    title,
-                    episodes,
-                    image: filename,
-                    broadcastDate,
-                    streaming_url,
-                    airing_status,
-                    status,
-                    rating,
-                    is_private,
-                    user_id: req.userId
-                };
-                res.status(201).json(responseContent);
+                const contentId = this.lastID;
+
+                const watchListQuery = `
+                    INSERT INTO watch_lists (user_id, content_id, status, rating, added_at, updated_at)
+                    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+                `;
+
+                db.run(watchListQuery, [userId, contentId, status, rating], function (err) {
+                    if (err) {
+                        console.error('Error inserting into watch list:', err);
+                        db.run('ROLLBACK');
+                        return resolve(c.json({ error: 'Database error occurred.' }, 500));
+                    }
+
+                    db.run('COMMIT');
+                    const responseContent = {
+                        id: contentId,
+                        title,
+                        episodes,
+                        image: filename,
+                        broadcastDate,
+                        streaming_url,
+                        airing_status,
+                        status,
+                        rating,
+                        is_private,
+                        user_id: userId
+                    };
+                    resolve(c.json(responseContent, 201));
+                });
             });
         });
     });
 });
 
-/* router.post('/watchlists/:id', auth, (req, res) => {
-    const { id } = req.params;
-    const { status, rating } = req.body;
-
-    //if (!status || !rating) {
-    //    return res.status(400).json({ error: 'Status and rating are required.' });
-    //}
-
-    db.get(`SELECT * FROM watch_lists WHERE content_id = ? AND user_id = ? `, [id, req.userId], (err, row) => {
-        if (err) {
-            console.error('Error checking watch list ownership:', err);
-            return res.status(500).json({ error: 'Database error occurred.' });
-        }
-        if (!row) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-
-        const query = `
-            UPDATE watch_lists 
-            SET status = ?, rating = ?, updated_at = datetime('now') 
-            WHERE user_id = ? AND content_id = ?
-    `;
-        db.run(query, [status, rating, req.userId, id], function (err) {
-            if (err) {
-                console.error('Error updating watch list:', err);
-                return res.status(500).json({ error: 'Database error occurred.' });
-            }
-
-            db.get(`
-                SELECT w.*, c.*
-    FROM watch_lists w
-                JOIN contents c ON w.content_id = c.id
-                WHERE w.user_id = ? AND w.content_id = ?
-    `, [req.userId, id], (err, row) => {
-                if (err) {
-                    console.error('Error fetching updated content:', err);
-                    return res.status(500).json({ error: 'Database error occurred.' });
-                }
-                res.status(200).json(row);
-            });
-        });
-    });
-}); */
-
-router.put('/watchlists/:id', auth, async (req, res, next) => {
-    const { id } = req.params;
-    const userId = req.userId;
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating } = req.body;
-
-    if (!title || title.trim() === '') {
-        return res.status(400).json({ error: 'Title is required.' });
-    }
-    // Validate request body
-    if (status === undefined || rating === undefined) {
-        return res.status(400).json({ error: 'Status and rating are required.' });
-    }
-
+app.put('/watchlists/:id', auth, editHistoryMiddleware('update', 'watch_list'), async (c) => {
     try {
+        const id = c.req.param('id');
+        const userId = c.get('userId');
+        const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating } = await c.req.json();
+
+        if (!title || title.trim() === '') {
+            return c.json({ error: 'Title is required.' }, 400);
+        }
+        if (status === undefined || rating === undefined) {
+            return c.json({ error: 'Status and rating are required.' }, 400);
+        }
+
         let filename = null;
         if (image && isExternalImage) {
             const result = await downloadImage(image);
@@ -212,55 +176,53 @@ router.put('/watchlists/:id', auth, async (req, res, next) => {
             broadcastDate,
         }, userId);
         await updateWatchlist(userId, id, { status, rating });
-        next();
+        
+        return c.json({ id, ...await c.req.json() }, 201);
     } catch (err) {
         console.error('Database error: ', err);
-        res.status(500).json({ error: 'Database error occurred. ' });
+        return c.json({ error: 'Database error occurred. ' }, 500);
     }
-}, editHistoryMiddleware('update', 'watch_list'), (req, res) => {
-    const { id } = req.params;
-    res.status(201).json({ id, ...req.body });
 });
 
-router.delete('/watchlists/:id', auth, async (req, res) => {
-    const userId = req.userId;
-    const { id } = req.params;
+app.delete('/watchlists/:id', auth, async (c) => {
+    const userId = c.get('userId');
+    const id = c.req.param('id');
     try {
         const result = await deleteWatchlist(userId, id);
         if (result.changes === 0) {
-            return res.status(404).json({ error: 'content not found.' });
+            return c.json({ error: 'content not found.' }, 404);
         }
         console.log('content was deleted:', id);
-        res.sendStatus(204);
+        return c.body(null, 204);
     } catch (error) {
         console.error('Deletion error:', error);
-        res.status(500).json({ error: 'Failed to delete content.' });
+        return c.json({ error: 'Failed to delete content.' }, 500);
     }
 });
 
-router.get('/search/watchlists', auth, async (req, res) => {
-    const userId = req.userId;
-    const title = req.query.title || '';
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
+app.get('/search/watchlists', auth, async (c) => {
+    const userId = c.get('userId');
+    const title = c.req.query('title') || '';
+    const limit = parseInt(c.req.query('limit'), 10) || 10;
+    const offset = parseInt(c.req.query('offset'), 10) || 0;
 
     if (limit > 50) {
-        return res.status(400).json({ error: 'Limit must not exceed 50.' });
+        return c.json({ error: 'Limit must not exceed 50.' }, 400);
     }
     if (limit <= 0 || offset < 0) {
-        return res.status(400).json({ error: 'Invalid limit or offset value.' });
+        return c.json({ error: 'Invalid limit or offset value.' }, 400);
     }
     if (title.length <= 1) {
-        return res.status(400).json({ error: 'Title must be longer than 1 character.' });
+        return c.json({ error: 'Title must be longer than 1 character.' }, 400);
     }
 
     try {
         const watchlists = await searchWatchlist(userId, title, limit, offset);
-        res.status(200).json(watchlists);
+        return c.json(watchlists, 200);
     } catch (error) {
-        cosole.error('Error searching watchlist:', error);
-        res.status(500).json({ error: 'Database error occurred.' });
+        console.error('Error searching watchlist:', error);
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
-export default router;
+export default app;

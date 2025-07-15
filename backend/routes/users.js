@@ -1,8 +1,8 @@
-import express from 'express';
+import { Hono } from 'hono';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { promises as fs } from 'fs';
-import jwt from 'jsonwebtoken';
+import { sign } from 'hono/jwt'
 import auth from '../middleware/auth.js';
 import { registerUser, getUserByUsername, getUserById, updateLastLogin, updateUser, deleteUser, getUserList, getUserDetails, searchUsers, } from '../models/user.js';
 import { analyzeUserPreferences, getUserRecommendations } from '../models/preferenceAnalysis.js';
@@ -22,179 +22,171 @@ if (!JWT_SECRET) {
     }
 }
 
-const router = express.Router();
+const app = new Hono();
 
 // ユーザー登録
-router.post('/users', async (req, res) => {
-    const { username, password, is_private } = req.body;
+app.post('/users', async (c) => {
+    const { username, password, is_private } = await c.req.json();
     if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required.' });
+        return c.json({ error: 'Username and password are required.' }, 400);
     }
     try {
         const userId = await registerUser({ username, password, is_private });
-        res.status(201).json({ message: 'User registered successfully.', userId });
+        return c.json({ message: 'User registered successfully.', userId }, 201);
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Error registering new user.' });
+        return c.json({ error: error.message || 'Error registering new user.' }, error.status || 500);
     }
 });
 
 // ユーザーログイン
-router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+app.post('/login', async (c) => {
+    const { username, password } = await c.req.json();
     try {
         const user = await getUserByUsername(username);
         if (!user) {
-            return res.status(404).json({ error: 'User not found or Invalid password.' });
+            return c.json({ error: 'User not found or Invalid password.' }, 404);
         }
         const passwordIsValid = await bcrypt.compare(password, user.password);
         if (!passwordIsValid) {
-            return res.status(401).json({ error: 'Invalid username or password.' });
+            return c.json({ error: 'Invalid username or password.' }, 401);
         }
         await updateLastLogin(user.user_id);
-        const token = jwt.sign(
-            { id: user.user_id },
-            JWT_SECRET,
-            {
-                expiresIn: '7d',
-                algorithm: 'HS256'
-            }
-        );
-        res.status(200).json({ auth: true, token });
+        const token = await sign({ id: user.user_id, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 }, JWT_SECRET, 'HS256');
+        return c.json({ auth: true, token }, 200);
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Error generating authentication token.' });
+        return c.json({ error: 'Error generating authentication token.' }, 500);
     }
 });
 
 // ユーザー情報の更新
-router.put('/users', auth, async (req, res) => {
-    const userId = req.userId;
-    const { username, password, is_private } = req.body;
+app.put('/users', auth, async (c) => {
+    const userId = c.get('userId');
+    const { username, password, is_private } = await c.req.json();
     try {
         const changes = await updateUser(userId, { username, password, is_private });
         if (changes === 0) {
-            return res.status(400).json({ error: 'No fields provided for update or no changes made.' });
+            return c.json({ error: 'No fields provided for update or no changes made.' }, 400);
         }
-        // 更新後のユーザー情報を取得して返す
         const updatedUser = await getUserById(userId);
-        res.json({ message: 'User information updated successfully.', user: updatedUser });
+        return c.json({ message: 'User information updated successfully.', user: updatedUser });
     } catch (error) {
         console.error('Update error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Database error occurred.' });
+        return c.json({ error: error.message || 'Database error occurred.' }, error.status || 500);
     }
 });
 
 // ユーザー削除
-router.delete('/users', auth, async (req, res) => {
-    const userId = req.userId;
+app.delete('/users', auth, async (c) => {
+    const userId = c.get('userId');
     try {
         const result = await deleteUser(userId);
         if (result.changes === 0) {
-            return res.status(404).json({ error: 'User not found.' });
+            return c.json({ error: 'User not found.' }, 404);
         }
         console.log('User was deleted:', userId);
-        res.sendStatus(204);
+        return c.body(null, 204);
     } catch (error) {
         console.error('Deletion error:', error);
-        res.status(500).json({ error: 'Failed to delete user.' });
+        return c.json({ error: 'Failed to delete user.' }, 500);
     }
 });
 
 // ユーザーリスト取得
-router.get('/users', async (req, res) => {
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
+app.get('/users', async (c) => {
+    const limit = parseInt(c.req.query('limit'), 10) || 10;
+    const offset = parseInt(c.req.query('offset'), 10) || 0;
 
     if (limit > 100) {
-        return res.status(400).json({ error: 'Limit must not exceed 100.' });
+        return c.json({ error: 'Limit must not exceed 100.' }, 400);
     }
     if (limit <= 0 || offset < 0) {
-        return res.status(400).json({ error: 'Invalid limit or offset value.' });
+        return c.json({ error: 'Invalid limit or offset value.' }, 400);
     }
 
     try {
         const users = await getUserList(limit, offset);
-        res.status(200).json(users);
+        return c.json(users, 200);
     } catch (error) {
         console.error('Error fetching user list:', error);
-        res.status(500).json({ error: 'An error occurred while fetching users from the database.' });
+        return c.json({ error: 'An error occurred while fetching users from the database.' }, 500);
     }
 });
 
 // ユーザーへのおすすめコンテンツを取得
-router.get('/users/recommendations', auth, async (req, res) => {
-    const userId = req.userId;
-    const limit = parseInt(req.query.limit) || 10;
+app.get('/users/recommendations', auth, async (c) => {
+    const userId = c.get('userId');
+    const limit = parseInt(c.req.query('limit')) || 10;
 
     try {
         const recommendations = await getUserRecommendations(userId, limit);
-        res.status(200).json(recommendations);
+        return c.json(recommendations, 200);
     } catch (error) {
         console.error(`Error getting recommendations for user ${userId}:`, error);
-        res.status(500).json({ error: 'An error occurred while getting recommendations.' });
+        return c.json({ error: 'An error occurred while getting recommendations.' }, 500);
     }
 });
 
 // ユーザー詳細取得
-router.get('/users/:id', auth, async (req, res) => {
-    const userId = req.params.id;
+app.get('/users/:id', auth, async (c) => {
+    const userId = c.req.param('id');
     try {
         const userDetails = await getUserDetails(userId);
         if (!userDetails) {
-            return res.status(404).json({ error: 'User not found.' });
+            return c.json({ error: 'User not found.' }, 404);
         }
-        res.status(200).json(userDetails);
+        return c.json(userDetails, 200);
     } catch (error) {
         console.error('Error fetching user details:', error);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
 // ユーザー検索
-router.get('/search/users', auth, async (req, res) => {
-    const userName = req.query.user_name || '';
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
+app.get('/search/users', auth, async (c) => {
+    const userName = c.req.query('user_name') || '';
+    const limit = parseInt(c.req.query('limit'), 10) || 10;
+    const offset = parseInt(c.req.query('offset'), 10) || 0;
 
     if (limit > 100) {
-        return res.status(400).json({ error: 'Limit must not exceed 100.' });
+        return c.json({ error: 'Limit must not exceed 100.' }, 400);
     }
     if (limit <= 0 || offset < 0) {
-        return res.status(400).json({ error: 'Invalid limit or offset value.' });
+        return c.json({ error: 'Invalid limit or offset value.' }, 400);
     }
 
     try {
         const users = await searchUsers(userName, limit, offset);
-        res.status(200).json(users);
+        return c.json(users, 200);
     } catch (error) {
         console.error('Error searching users:', error);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
 // ユーザーの嗜好分析結果を取得
-router.get('/users/:id/preference-analysis', auth, async (req, res) => {
-    const requestedUserId = parseInt(req.params.id, 10);
-    const requesterId = parseInt(req.userId, 10);
+app.get('/users/:id/preference-analysis', auth, async (c) => {
+    const requestedUserId = parseInt(c.req.param('id'), 10);
+    const requesterId = parseInt(c.get('userId'), 10);
 
     // 自分自身の分析結果のみ取得可能
     if (isNaN(requestedUserId) || isNaN(requesterId) || requestedUserId !== requesterId) {
-        return res.status(403).json({ error: 'Forbidden: You can only access your own preference analysis.' });
+        return c.json({ error: 'Forbidden: You can only access your own preference analysis.' }, 403);
     }
 
     // Ollama関連の環境変数が設定されているかチェック
     if (!process.env.OLLAMA_API_URL || !process.env.OLLAMA_EMBEDDING_MODEL) {
-        return res.status(503).json({ error: 'Service Unavailable: The analysis service is not configured. Please set OLLAMA_API_URL and OLLAMA_EMBEDDING_MODEL.' });
+        return c.json({ error: 'Service Unavailable: The analysis service is not configured. Please set OLLAMA_API_URL and OLLAMA_EMBEDDING_MODEL.' }, 503);
     }
 
     try {
         const analysisResult = await analyzeUserPreferences(requestedUserId);
-        res.status(200).json(analysisResult);
+        return c.json(analysisResult, 200);
     } catch (error) {
         console.error(`Error analyzing preferences for user ${requestedUserId}:`, error);
-        res.status(500).json({ error: 'An error occurred during preference analysis.' });
+        return c.json({ error: 'An error occurred during preference analysis.' }, 500);
     }
 });
 
-export default router;
+export default app;

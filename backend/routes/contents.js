@@ -1,4 +1,4 @@
-import express from 'express';
+import { Hono } from 'hono';
 import { db } from '../db.js';
 import auth from '../middleware/auth.js';
 import { downloadImage, isExternalImage } from '../utils/imageDownload.js';
@@ -8,20 +8,20 @@ import { analyzeUserPreferences, getEmbeddings } from '../models/preferenceAnaly
 import isPrivateCheck from '../middleware/private.js';
 import { editHistoryMiddleware } from '../middleware/editHistory.js'
 
-const router = express.Router();
+const app = new Hono();
 
 // GET /contents (protected route)
-router.get('/contents', async (req, res) => {
+app.get('/contents', async (c) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        const offset = parseInt(req.query.offset) || 0;
-        const sortByParam = (req.query.sortBy || 'BROADCAST').toUpperCase();
-        const sortOrder = (req.query.sortOrder || 'ASC').toUpperCase();
-        const protocol = req.protocol;
-        const host = req.get('host');
+        const limit = Math.min(parseInt(c.req.query('limit')) || 10, 50);
+        const offset = parseInt(c.req.query('offset')) || 0;
+        const sortByParam = (c.req.query('sortBy') || 'BROADCAST').toUpperCase();
+        const sortOrder = (c.req.query('sortOrder') || 'ASC').toUpperCase();
+        const protocol = c.req.url.startsWith('https') ? 'https' : 'http';
+        const host = c.req.header('host');
 
         if (isNaN(limit) || isNaN(offset) || limit <= 0 || offset < 0) {
-            return res.status(400).json({ error: 'Invalid limit or offset parameters.' });
+            return c.json({ error: 'Invalid limit or offset parameters.' }, 400);
         }
 
         const allowedSortByFields = {
@@ -29,21 +29,22 @@ router.get('/contents', async (req, res) => {
             TITLE: 'title',
         };
         if (!allowedSortByFields.hasOwnProperty(sortByParam)) {
-            return res.status(400).json({ error: 'Invalid sortBy parameter.' });
+            return c.json({ error: 'Invalid sortBy parameter.' }, 400);
         }
         if (sortOrder !== 'ASC' && sortOrder !== 'DESC') {
-            return res.status(400).json({ error: 'Invalid sortOrder parameter. Use ASC or DESC.' });
+            return c.json({ error: 'Invalid sortOrder parameter. Use ASC or DESC.' }, 400);
         }
 
         const sortBy = allowedSortByFields[sortByParam];
-        const { airing_status, content_type } = req.query;
+        const airing_status = c.req.query('airing_status');
+        const content_type = c.req.query('content_type');
         const allowedAiringStatuses = ['Upcoming', 'Airing', 'Finished Airing'];
         if (airing_status && !allowedAiringStatuses.includes(airing_status)) {
-            return res.status(400).json({ error: 'Invalid airing_status parameter.' });
+            return c.json({ error: 'Invalid airing_status parameter.' }, 400);
         }
         const allowedContentTypes = ['documentary', 'drama', 'anime'];
         if (content_type && !allowedContentTypes.includes(content_type)) {
-            return res.status(400).json({ error: 'Invalid content_type parameter.' });
+            return c.json({ error: 'Invalid content_type parameter.' }, 400);
         }
 
         const contents = await getContents({
@@ -61,22 +62,22 @@ router.get('/contents', async (req, res) => {
                 `${protocol}://${host}/api/images/${row.image}` : row.image,
         }));
 
-        res.status(200).json(transformedRows);
+        return c.json(transformedRows, 200);
     } catch (err) {
         console.error('Error fetching contents:', err);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
 // POST /contents (protected route)
-router.post('/contents', auth, async (req, res, next) => {
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = req.body;
-    if (!title || title.trim() === '') {
-        return res.status(400).json({ error: 'Title is required.' });
-    }
-    const added_by = req.userId;
-
+app.post('/contents', auth, editHistoryMiddleware('create', 'content'), async (c) => {
     try {
+        const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = await c.req.json();
+        if (!title || title.trim() === '') {
+            return c.json({ error: 'Title is required.' }, 400);
+        }
+        const added_by = c.get('userId');
+
         let filename = null;
         if (image && isExternalImage) {
             const result = await downloadImage(image);
@@ -101,26 +102,25 @@ router.post('/contents', auth, async (req, res, next) => {
             description,
             description_embedding: embedding,
         });
-        req.newContentId = newContentId;
+        c.set('newContentId', newContentId);
+        c.set('id', newContentId); // for editHistoryMiddleware
 
-        next();
+        return c.json({ id: newContentId }, 201);
     } catch (error) {
         console.error('Database error:', error);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
-}, editHistoryMiddleware('create', 'content'), (req, res) => {
-    return res.status(201).json({ id: req.newContentId });
 });
 
 // PUT /contents/:id: コンテンツ更新
-router.put('/contents/:id', auth, isPrivateCheck, async (req, res, next) => {
-    const { id } = req.params;
-    const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = req.body;
-    if (!title || title.trim() === '') {
-        return res.status(400).json({ error: 'Title is required.' });
-    }
-
+app.put('/contents/:id', auth, isPrivateCheck, editHistoryMiddleware('update', 'content'), async (c) => {
     try {
+        const id = c.req.param('id');
+        const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate } = await c.req.json();
+        if (!title || title.trim() === '') {
+            return c.json({ error: 'Title is required.' }, 400);
+        }
+
         let filename = null;
         if (image && isExternalImage) {
             const result = await downloadImage(image);
@@ -145,24 +145,21 @@ router.put('/contents/:id', auth, isPrivateCheck, async (req, res, next) => {
             description_embedding: embedding,
         });
 
-        next();
+        return c.json({ id, ...await c.req.json() }, 201);
     } catch (err) {
         console.error('Database error:', err);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
-}, editHistoryMiddleware('update', 'content'), (req, res) => {
-    const { id } = req.params;
-    res.status(201).json({ id, ...req.body });
 });
 
 // DELETE /contents/:id: コンテンツ削除
-router.delete('/contents/:id', auth, isPrivateCheck, async (req, res) => {
+app.delete('/contents/:id', auth, isPrivateCheck, async (c) => {
     try {
-        const { id } = req.params;
-        const userId = req.userId;
+        const id = c.req.param('id');
+        const userId = c.get('userId');
         const previousContent = await deleteContent(id, userId);
         if (!previousContent) {
-            return res.status(404).json({ error: 'Content not found.' });
+            return c.json({ error: 'Content not found.' }, 404);
         }
 
         const historyQuery = `
@@ -171,7 +168,7 @@ router.delete('/contents/:id', auth, isPrivateCheck, async (req, res) => {
     `;
         db.run(
             historyQuery,
-            [req.userId, 'content', id, 'delete', '{}', JSON.stringify(previousContent)],
+            [userId, 'content', id, 'delete', '{}', JSON.stringify(previousContent)],
             (historyErr) => {
                 if (historyErr) {
                     console.error('Error inserting delete history:', historyErr);
@@ -179,46 +176,46 @@ router.delete('/contents/:id', auth, isPrivateCheck, async (req, res) => {
             }
         );
 
-        res.sendStatus(204);
+        return c.body(null, 204);
     } catch (err) {
         console.error('Error deleting content:', err);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
 // GET /contents/:id/similar: 類似コンテンツを取得
-router.get('/contents/:id/similar', async (req, res) => {
+app.get('/contents/:id/similar', async (c) => {
     try {
-        const { id } = req.params;
-        const limit = parseInt(req.query.limit) || 10;
+        const id = c.req.param('id');
+        const limit = parseInt(c.req.query('limit')) || 10;
         const similarContents = await findSimilarContents(id, limit);
-        res.status(200).json(similarContents);
+        return c.json(similarContents, 200);
     } catch (err) {
         console.error('Error finding similar contents:', err);
-        res.status(500).json({ error: 'Database error occurred.' });
+        return c.json({ error: 'Database error occurred.' }, 500);
     }
 });
 
 // POST /contents/predict-rating: おすすめ度を予測
-router.post('/contents/predict-rating', auth, async (req, res) => {
-    const { description } = req.body;
-    const userId = req.userId;
+app.post('/contents/predict-rating', auth, async (c) => {
+    const { description } = await c.req.json();
+    const userId = c.get('userId');
 
     if (!description) {
-        return res.status(400).json({ error: 'Description is required.' });
+        return c.json({ error: 'Description is required.' }, 400);
     }
 
     try {
         // 1. ユーザーの嗜好ベクトルを取得
         const { userPreferenceVector } = await analyzeUserPreferences(userId);
         if (!userPreferenceVector || userPreferenceVector.length === 0) {
-            return res.status(200).json({ prediction: 0, message: 'Not enough data for prediction.' });
+            return c.json({ prediction: 0, message: 'Not enough data for prediction.' }, 200);
         }
 
         // 2. 新しい説明文のEmbeddingを生成
         const newEmbeddings = await getEmbeddings([description]);
         if (!newEmbeddings || newEmbeddings.length === 0 || newEmbeddings[0].length === 0) {
-            return res.status(500).json({ error: 'Failed to generate embedding for the description.' });
+            return c.json({ error: 'Failed to generate embedding for the description.' }, 500);
         }
         const newVector = newEmbeddings[0];
 
@@ -228,13 +225,27 @@ router.post('/contents/predict-rating', auth, async (req, res) => {
         // 予測スコアを0-100の範囲に正規化して返す
         const predictionScore = Math.round(Math.max(0, Math.min(1, similarity)) * 100);
 
-        res.status(200).json({ prediction: predictionScore });
+        return c.json({ prediction: predictionScore }, 200);
 
     } catch (error) {
         console.error('Error predicting rating:', error);
-        res.status(500).json({ error: 'An error occurred during prediction.' });
+        return c.json({ error: 'An error occurred during prediction.' }, 500);
     }
 });
 
+// コサイン類似度を計算するヘルパー関数
+function cosineSimilarity(vecA, vecB) {
+    if (!vecA || !vecB || vecA.length !== vecB.length) {
+        return 0;
+    }
+    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
+    const normA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
+    const normB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    if (normA === 0 || normB === 0) {
+        return 0;
+    }
+    return dotProduct / (normA * normB);
+}
 
-export default router;
+
+export default app;
