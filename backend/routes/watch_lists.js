@@ -37,7 +37,7 @@ router.get('/watchlists', auth, async (req, res) => {
         }
 
         const sortBy = allowedSortByFields[sortByParam];
-        const { airing_status, content_type, status, rating } = req.query;
+        const { airing_status, content_type, status, rating, search } = req.query;
         const allowedAiringStatuses = ['Upcoming', 'Airing', 'Finished Airing'];
         if (airing_status && !allowedAiringStatuses.includes(airing_status)) {
             return res.status(400).json({ error: 'Invalid airing_status parameter.' });
@@ -56,7 +56,8 @@ router.get('/watchlists', auth, async (req, res) => {
             airing_status,
             content_type,
             status,
-            rating
+            rating,
+            search
         );
 
         const transformedRows = contents.map(row => ({

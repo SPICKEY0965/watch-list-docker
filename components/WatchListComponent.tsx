@@ -34,6 +34,7 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
     const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>('All');
     const [activeRating, setActiveRating] = useState<ContentsRating | 'All' | null>('All');
     const [sortBy, setSortBy] = useState('Recently Updated');
+    const [searchQuery, setSearchQuery] = useState('');
     const [contentsToEdit, setContentsToEdit] = useState<Contents | null>(null);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -122,7 +123,7 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
             setTotalLoaded(0);
             setHasMore(true);
         }
-    }, [sortBy, activeTab, activeRating, isLoaded]);
+    }, [sortBy, activeTab, activeRating, searchQuery, isLoaded]);
 
     useEffect(() => {
         if (page === 0) {
@@ -173,6 +174,9 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
             if (activeRating !== 'All' && activeRating !== null) {
                 params.rating = activeRating;
             }
+            if (searchQuery) {
+                params.search = searchQuery;
+            }
             const response = await apiClient.get('/api/watchlists', { params });
             const newItems: Contents[] = response.data.map((contents: Contents) => ({
                 ...contents,
@@ -206,7 +210,7 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading, token, isOnline, page, pageSize, sortBy, activeTab, activeRating, apiClient, handleLogout]);
+    }, [isLoading, token, isOnline, page, pageSize, sortBy, activeTab, activeRating, searchQuery, apiClient, handleLogout]);
 
     // 各種ハンドラ
     const handleSort = (criteria: string) => {
@@ -303,6 +307,7 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
                     setActiveRating={setActiveRating}
                     sortBy={sortBy}
                     onSort={handleSort}
+                    onSearch={setSearchQuery}
                     onAdd={() => setIsAddDialogOpen(true)}
                     onLogout={handleLogout}
                     onOpenFilter={() => setIsFilterMenuOpen(!isFilterMenuOpen)}

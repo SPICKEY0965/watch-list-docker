@@ -103,16 +103,20 @@ export default function AnalysisPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
       <div className="container mx-auto space-y-8 max-w-6xl">
-        <header className="text-center relative">
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl text-white">あなたの視聴傾向分析</h1>
-          <p className="text-lg text-gray-300 mt-4 max-w-2xl mx-auto">
+        <header className="mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white text-center md:text-left w-full md:w-auto">
+              あなたの視聴傾向分析
+            </h1>
+            <div className="w-full md:w-auto flex justify-center md:justify-end">
+              <Button asChild variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
+                <Link href="/home">ホームページへ</Link>
+              </Button>
+            </div>
+          </div>
+          <p className="text-lg text-gray-300 text-center md:text-left">
             高評価（SまたはSS）を付けた作品の概要を分析し、あなたの好みを可視化します。
           </p>
-          <div className="absolute top-0 left-0">
-            <Button asChild variant="ghost" className="text-white hover:bg-gray-700">
-              <Link href="/home">ホームページへ</Link>
-            </Button>
-          </div>
         </header>
 
         <section>

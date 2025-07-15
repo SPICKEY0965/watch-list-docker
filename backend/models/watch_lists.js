@@ -16,8 +16,9 @@ import { runQuery, getQuery, allQuery } from './query.js';
  * @param {string} content_type - コンテンツ種別
  * @param {string} status - ウォッチ状況
  * @param {string} rating - 評価
+ * @param {string} searchQuery - 検索クエリ
  */
-async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_status, content_type, status, rating) {
+async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_status, content_type, status, rating, searchQuery) {
     let query = `
         SELECT 
             w.content_id, w.status, 
@@ -45,6 +46,10 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
     `;
     const queryParams = [userId];
 
+    if (searchQuery) {
+        query += ` AND c.title LIKE ?`;
+        queryParams.push(`%${searchQuery}%`);
+    }
     if (airing_status) {
         query += ' AND c.airing_status = ?';
         queryParams.push(airing_status);

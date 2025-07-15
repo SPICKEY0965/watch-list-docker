@@ -1,10 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { ContentsRating, ContentsStatus } from "@/components/types"
-import { Filter, Plus, Settings } from "lucide-react"
+import { Filter, Plus, Settings, Search } from "lucide-react"
 import Link from "next/link"
 
 //
@@ -17,6 +19,7 @@ interface HeaderProps {
     setActiveRating: (value: ContentsRating | "All" | null) => void
     sortBy: string
     onSort: (criteria: string) => void
+    onSearch: (query: string) => void
     onAdd: () => void
     onLogout: () => void
     onOpenFilter: () => void
@@ -31,12 +34,15 @@ export default function Header({
     setActiveRating,
     sortBy,
     onSort,
+    onSearch,
     onAdd,
     onLogout,
     onOpenFilter,
     onUpdateAll,
     isUpdating,
 }: HeaderProps) {
+    const [isSearchOpen, setIsSearchOpen] = useState(false)
+
     // 共通の設定ボタン
     const renderSettingsButton = () => (
         <Popover>
@@ -96,27 +102,51 @@ export default function Header({
         <div className="bg-gray-900 text-white">
             {/* モバイル版 */}
             <div className="flex justify-between items-center p-4 md:hidden">
-                <h1 className="text-xl font-bold flex items-center gap-2">ウォッチリスト</h1>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={onOpenFilter}
-                        aria-label="フィルターとソートメニューを開く"
-                        className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
-                    >
-                        <Filter className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={onAdd}
-                        className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                    {renderSettingsButton()}
-                </div>
+                {isSearchOpen ? (
+                    <div className="flex w-full items-center gap-2">
+                        <Input
+                            type="search"
+                            placeholder="タイトルで検索..."
+                            className="flex-grow bg-gray-800 border-gray-700 text-white"
+                            onChange={(e) => onSearch(e.target.value)}
+                            autoFocus
+                        />
+                        <Button variant="ghost" onClick={() => setIsSearchOpen(false)}>キャンセル</Button>
+                    </div>
+                ) : (
+                    <>
+                        <h1 className="text-xl font-bold flex items-center gap-2">ウォッチリスト</h1>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsSearchOpen(true)}
+                                aria-label="検索を開く"
+                                className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
+                            >
+                                <Search className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={onOpenFilter}
+                                aria-label="フィルターとソートメニューを開く"
+                                className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
+                            >
+                                <Filter className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={onAdd}
+                                className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                            {renderSettingsButton()}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* デスクトップ版 */}
@@ -127,6 +157,12 @@ export default function Header({
                         ウォッチリスト
                     </h1>
                     <div className="flex items-center gap-3">
+                        <Input
+                            type="search"
+                            placeholder="タイトルで検索..."
+                            className="w-64 bg-gray-800 border-gray-700 text-white"
+                            onChange={(e) => onSearch(e.target.value)}
+                        />
                         <Select value={sortBy} onValueChange={onSort}>
                             <SelectTrigger className="w-[180px] bg-gray-800 text-white border-gray-700">
                                 <SelectValue placeholder="並び替え" />
