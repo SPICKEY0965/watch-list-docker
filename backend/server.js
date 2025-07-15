@@ -12,12 +12,13 @@ import os from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { initializeDatabase } from './db.js';
+import { sequelize } from './db.js';
 import rootRoutes from './routes/root.js';
-import authRoutes from './routes/auth.js';
 import contentsRoutes from './routes/contents.js';
 import imagesRoutes from './routes/images.js';
 import metadataRoutes from './routes/metadata.js';
+import watchlistsRoutes from './routes/watch_lists.js';
+import usersRoutes from './routes/users.js';
 
 const app = express();
 const PORT = 5000;
@@ -26,6 +27,7 @@ const PORT = 5000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('combined', { stream: fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }) }));
+app.use(morgan('combined'));
 
 // Error logging middleware
 app.use((err, req, res, next) => {
@@ -53,17 +55,21 @@ function getLocalIpAddress() {
 
 const ipAddress = getLocalIpAddress();
 
-// Initialize database
-initializeDatabase();
+// マイグレーションを実行
+import('./migrate.js').then(() => {
+    // Routes
+    app.use('', rootRoutes);
+    app.use('/api', contentsRoutes);
+    app.use('/api', imagesRoutes);
+    app.use('/api', metadataRoutes);
+    app.use('/api', watchlistsRoutes);
+    app.use('/api', contentsRoutes);
+    app.use('/api', usersRoutes);
 
-// Routes
-app.use('', rootRoutes);
-app.use('/api', authRoutes);
-app.use('/api', contentsRoutes);
-app.use('/api', imagesRoutes);
-app.use('/api', metadataRoutes);
-
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server running on http://${ipAddress}:${PORT}`);
+    // Start the server
+    app.listen(PORT, () => {
+        console.log(`Server running on http://${ipAddress}:${PORT}`);
+    });
+}).catch(err => {
+    console.error('Migration failed:', err);
 });

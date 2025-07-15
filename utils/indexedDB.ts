@@ -7,7 +7,7 @@ export async function openDatabase(): Promise<IDBDatabase> {
         request.onsuccess = () => resolve(request.result);
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            db.createObjectStore('contents', { keyPath: 'id' });
+            db.createObjectStore('contents', { keyPath: 'content_id' });
         };
     });
 }

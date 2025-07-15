@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { db } from '../db.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const auth = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -36,7 +36,7 @@ const auth = (req, res, next) => {
         }
 
         // データベースでユーザーの存在を確認
-        db.get('SELECT * FROM users WHERE id = ?', [decoded.id], (dbErr, user) => {
+        db.get('SELECT * FROM users WHERE user_id = ?', [decoded.id], (dbErr, user) => {
             if (dbErr) {
                 console.error('Database error during token verification:', dbErr);
                 return res.status(500).json({ error: 'Database error occurred.' });

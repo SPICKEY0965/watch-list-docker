@@ -158,10 +158,18 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                                         {contents.rating === "unrated" ? "未評価" : contents.rating}
                                     </Badge>
                                 </div>
-
+                                <p className="text-sm">
+                                <strong>シェア:</strong> {
+                                    {
+                                        "true": '非公開',
+                                        "false": '公開',
+                                    }[contents.is_private]
+                                }
+                                </p>
+                                
                                 <Button className="w-full" variant="default">
                                     <a
-                                        href={convertToUniversalLink(contents.streamingUrl, navigator.userAgent)}
+                                        href={convertToUniversalLink(contents.streaming_url, navigator.userAgent)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center w-full"
@@ -200,7 +208,7 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                             ].map(([value, label]) => (
                                 <DropdownMenuItem
                                     key={value}
-                                    onSelect={() => onStatusChange(contents.id, value as ContentsStatus)}
+                                    onSelect={() => onStatusChange(contents.content_id, value as ContentsStatus)}
                                     className="cursor-pointer"
                                 >
                                     <div className="flex items-center justify-between w-full">
@@ -211,7 +219,7 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                             ))}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                                onSelect={() => onDelete(contents.id)}
+                                onSelect={() => onDelete(contents.content_id)}
                                 className="text-red-500 cursor-pointer focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950/50"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -270,7 +278,7 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                 variant="default"
                 size="icon"
                 className="absolute bottom-4 right-4 h-9 w-9 rounded-full shadow-lg"
-                onClick={() => window.open(convertToUniversalLink(contents.streamingUrl, navigator.userAgent), "_blank")}
+                onClick={() => window.open(convertToUniversalLink(contents.streaming_url, navigator.userAgent), "_blank")}
             >
                 <Play className="h-4 w-4" />
             </Button>
