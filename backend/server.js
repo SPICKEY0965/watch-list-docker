@@ -21,6 +21,7 @@ import watchlistsRoutes from './routes/watch_lists.js';
 import usersRoutes from './routes/users.js';
 import batchRoutes from './routes/batch.js';
 import embeddingRoutes from './routes/embedding.js';
+import { seedTags } from './models/preferenceAnalysis.js';
 
 const app = express();
 const PORT = 5000;
@@ -55,24 +56,37 @@ function getLocalIpAddress() {
     return 'localhost';
 }
 
+import { runMigrations } from './migrate.js';
+
 const ipAddress = getLocalIpAddress();
 
-// マイグレーションを実行
-import('./migrate.js').then(() => {
-    // Routes
-    app.use('', rootRoutes);
-    app.use('/api', contentsRoutes);
-    app.use('/api', imagesRoutes);
-    app.use('/api', metadataRoutes);
-    app.use('/api', watchlistsRoutes);
-    app.use('/api', usersRoutes);
-    app.use('/api', batchRoutes);
-    app.use('/api', embeddingRoutes);
+const startServer = async () => {
+    try {
+        // 1. マイグレーションを実行
+        await runMigrations();
 
-    // Start the server
-    app.listen(PORT, () => {
-        console.log(`Server running on http://${ipAddress}:${PORT}`);
-    });
-}).catch(err => {
-    console.error('Migration failed:', err);
-});
+        // 2. タグの初期データを登録
+        await seedTags();
+        console.log('Tag seeding completed.');
+
+        // 3. ルーティングを設定
+        app.use('', rootRoutes);
+        app.use('/api', contentsRoutes);
+        app.use('/api', imagesRoutes);
+        app.use('/api', metadataRoutes);
+        app.use('/api', watchlistsRoutes);
+        app.use('/api', usersRoutes);
+        app.use('/api', batchRoutes);
+        app.use('/api', embeddingRoutes);
+
+        // 4. サーバーを起動
+        app.listen(PORT, () => {
+            console.log(`Server running on http://${ipAddress}:${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+};
+
+startServer();

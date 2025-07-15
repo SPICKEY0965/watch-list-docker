@@ -9,8 +9,8 @@ const umzug = new Umzug({
     logger: console,
 });
 
-(async () => {
+export const runMigrations = async () => {
     console.log('Running migrations...');
     await umzug.up();
     console.log('Migrations completed.');
-})();
+};

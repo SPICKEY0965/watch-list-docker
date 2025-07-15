@@ -3,7 +3,6 @@ import axios from 'axios';
 
 // --- Embedding API & ベクトル計算 ---
 
-let tagEmbeddingsCache = null;
 const PREDEFINED_TAG_TEXTS = [
   // ジャンルの拡張
   'SF', 'アクション', '感動', 'コメディ', 'サスペンス', '恋愛', 'ファンタジー', '日常',
@@ -22,6 +21,27 @@ const PREDEFINED_TAG_TEXTS = [
   'ファッション', 'ライフスタイル', '旅行', '観光', '自然', '動物', '植物', '生態系',
   '気候変動', '災害', '危機', 'リスク', '安全', '防衛', '戦略', '計画', '戦術', '戦争', '平和'
 ];
+
+// --- Tag Management ---
+
+/**
+ * 定義済みのタグをDBに登録する
+ */
+export async function seedTags() {
+  const insertTag = db.prepare('INSERT OR IGNORE INTO tags (tag_name) VALUES (?)');
+  for (const tagName of PREDEFINED_TAG_TEXTS) {
+    await new Promise((resolve, reject) => {
+      insertTag.run(tagName, (err) => (err ? reject(err) : resolve()));
+    });
+  }
+  await new Promise((resolve, reject) => {
+    insertTag.finalize((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+// --- Embedding & Cache Management ---
+
+let tagEmbeddingsCache = null; // メモリキャッシュ
 
 /**
  * 複数のテキストからEmbeddingを取得する (Ollama対応)
@@ -105,10 +125,80 @@ function weightedAverageVectors(vectorsWithRatings) {
 }
 
 /**
- * ユーザーの嗜好を分析する
- * @param {number} userId - ユーザーID
- * @returns {Promise<Object>} - 分析結果
+ * DBとキャッシュからタグのEmbeddingを取得・管理する
+ * @returns {Promise<Object[]>} - タグとEmbeddingの配列
  */
+async function getTagEmbeddingsFromDbAndCache() {
+  const modelName = process.env.OLLAMA_EMBEDDING_MODEL;
+  if (!modelName) throw new Error('OLLAMA_EMBEDDING_MODEL is not set.');
+
+  // 1. メモリキャッシュの確認
+  if (tagEmbeddingsCache && tagEmbeddingsCache.modelName === modelName) {
+    return tagEmbeddingsCache.data;
+  }
+
+  console.log('Loading tag embeddings from database...');
+
+  // 2. DBからタグと既存のEmbeddingを取得
+  const query = `
+    SELECT t.tag_id, t.tag_name, te.embedding
+    FROM tags t
+    LEFT JOIN tag_embeddings te ON t.tag_id = te.tag_id AND te.model_name = ?
+  `;
+  const allTags = await new Promise((resolve, reject) => {
+    db.all(query, [modelName], (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+
+  // 3. Embeddingが存在しないタグを特定
+  const tagsToFetch = allTags.filter(tag => !tag.embedding);
+  if (tagsToFetch.length > 0) {
+    console.log(`Fetching embeddings for ${tagsToFetch.length} new tags...`);
+    const tagTextsToFetch = tagsToFetch.map(tag => tag.tag_name);
+    const newEmbeddings = await getEmbeddings(tagTextsToFetch);
+
+    // 4. 新しいEmbeddingをDBに保存
+    const insertEmbedding = db.prepare(
+      'INSERT INTO tag_embeddings (tag_id, model_name, embedding) VALUES (?, ?, ?)'
+    );
+    for (let i = 0; i < tagsToFetch.length; i++) {
+      const tag = tagsToFetch[i];
+      const embedding = newEmbeddings[i];
+      if (embedding && embedding.length > 0) {
+        const embeddingJson = JSON.stringify(embedding);
+        await new Promise((resolve, reject) => {
+          insertEmbedding.run(tag.tag_id, modelName, embeddingJson, (err) => (err ? reject(err) : resolve()));
+        });
+        // allTagsの対応するエントリも更新
+        const originalTag = allTags.find(t => t.tag_id === tag.tag_id);
+        if (originalTag) originalTag.embedding = embeddingJson;
+      }
+    }
+    await new Promise((resolve, reject) => {
+      insertEmbedding.finalize((err) => (err ? reject(err) : resolve()));
+    });
+  }
+
+  // 5. 結果を整形してキャッシュに保存
+  const finalEmbeddings = allTags
+    .map(tag => {
+      try {
+        return {
+          text: tag.tag_name,
+          embedding: tag.embedding ? JSON.parse(tag.embedding) : [],
+        };
+      } catch (e) {
+        console.error(`Failed to parse embedding for tag: ${tag.tag_name}`, e);
+        return { text: tag.tag_name, embedding: [] };
+      }
+    })
+    .filter(tag => tag.embedding && tag.embedding.length > 0);
+
+  tagEmbeddingsCache = { modelName, data: finalEmbeddings };
+  console.log('Tag embeddings are ready.');
+  return finalEmbeddings;
+}
+
+
 export async function analyzeUserPreferences(userId) {
   // 1. 属性分析用のデータを取得 (descriptionがなくてもOK)
   const attributeRows = await new Promise((resolve, reject) => {
@@ -149,12 +239,8 @@ export async function analyzeUserPreferences(userId) {
   let userPreferenceVector = [];
 
   if (keywordRows.length > 0) {
-    // タグのベクトルを準備 (キャッシュがあれば利用)
-    if (!tagEmbeddingsCache) {
-      console.log('Fetching and caching tag embeddings...');
-      const embeddings = await getEmbeddings(PREDEFINED_TAG_TEXTS);
-      tagEmbeddingsCache = PREDEFINED_TAG_TEXTS.map((text, i) => ({ text, embedding: embeddings[i] }));
-    }
+    // タグのベクトルを準備 (DBとキャッシュから取得)
+    const tagEmbeddings = await getTagEmbeddingsFromDbAndCache();
 
     const vectorsWithRatings = keywordRows.map(row => {
       try {
@@ -169,9 +255,8 @@ export async function analyzeUserPreferences(userId) {
 
     if (vectorsWithRatings.length > 0) {
       userPreferenceVector = weightedAverageVectors(vectorsWithRatings);
-      const validTags = tagEmbeddingsCache.filter(tag => tag.embedding && tag.embedding.length > 0);
 
-      keywordAnalysis = validTags.map(tag => ({
+      keywordAnalysis = tagEmbeddings.map(tag => ({
         text: tag.text,
         score: cosineSimilarity(userPreferenceVector, tag.embedding),
       }));
