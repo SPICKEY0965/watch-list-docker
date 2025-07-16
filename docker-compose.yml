@@ -20,6 +20,5 @@ services:
     environment:
       NODE_ENV: production
     volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
+      - ./backend/contents.db:/usr/src/app/contents.db
     restart: always
