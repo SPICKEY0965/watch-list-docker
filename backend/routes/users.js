@@ -4,8 +4,10 @@ import { randomBytes } from 'crypto';
 import { promises as fs } from 'fs';
 import { sign } from 'hono/jwt'
 import auth from '../middleware/auth.js';
-import { registerUser, getUserByUsername, getUserById, updateLastLogin, updateUser, deleteUser, getUserList, getUserDetails, searchUsers, } from '../models/user.js';
+import { createAuthToken, deleteAuthToken, deleteAllUserAuthTokens } from '../models/auth_tokens.js';
+import { registerUser, getUserByUsername, getUserById, updateUser, deleteUser, getUserList, getUserDetails, searchUsers, } from '../models/user.js';
 import { analyzeUserPreferences, getUserRecommendations } from '../models/preferenceAnalysis.js';
+import { verifyOneTimeToken } from '../models/one_time_tokens.js';
 
 
 let JWT_SECRET = process.env.JWT_SECRET;
@@ -51,12 +53,43 @@ app.post('/login', async (c) => {
         if (!passwordIsValid) {
             return c.json({ error: 'Invalid username or password.' }, 401);
         }
-        await updateLastLogin(user.user_id);
-        const token = await sign({ id: user.user_id, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 }, JWT_SECRET, 'HS256');
+        
+        const expiresIn = 60 * 60 * 24 * 7; // 7 days
+        const expiresAt = new Date(Date.now() + expiresIn * 1000);
+        const payload = { id: user.user_id, exp: Math.floor(expiresAt.getTime() / 1000) };
+        const token = await sign(payload, JWT_SECRET, 'HS256');
+        
+        const deviceInfo = c.req.header('User-Agent') || 'Unknown device';
+        await createAuthToken({ userId: user.user_id, token, deviceInfo, expiresAt });
+
         return c.json({ auth: true, token }, 200);
     } catch (error) {
         console.error('Login error:', error);
         return c.json({ error: 'Error generating authentication token.' }, 500);
+    }
+});
+
+// ユーザーログアウト
+app.post('/logout', auth, async (c) => {
+    const token = c.get('token');
+    try {
+        await deleteAuthToken(token);
+        return c.json({ message: 'Logged out successfully.' }, 200);
+    } catch (error) {
+        console.error('Logout error:', error);
+        return c.json({ error: 'Failed to logout.' }, 500);
+    }
+});
+
+// 全てのデバイスからログアウト
+app.post('/logout-all', auth, async (c) => {
+    const userId = c.get('userId');
+    try {
+        await deleteAllUserAuthTokens(userId);
+        return c.json({ message: 'Logged out from all devices successfully.' }, 200);
+    } catch (error) {
+        console.error('Logout-all error:', error);
+        return c.json({ error: 'Failed to logout from all devices.' }, 500);
     }
 });
 
@@ -79,8 +112,22 @@ app.put('/users', auth, async (c) => {
 
 // ユーザー削除
 app.delete('/users', auth, async (c) => {
-    const userId = c.get('userId');
+    const requestorId = c.get('userId');
+    const { oneTimeToken } = await c.req.json();
+
+    if (!oneTimeToken) {
+        return c.json({ error: 'Invalid request. One-time token is required.' }, 400);
+    }
+
     try {
+        // Verify the one-time token
+        const { userId } = await verifyOneTimeToken(oneTimeToken, 'delete_account');
+
+        // Ensure the token was issued for the current user
+        if (userId !== requestorId) {
+            return c.json({ error: 'Invalid one-time token.' }, 403);
+        }
+
         const result = await deleteUser(userId);
         if (result.changes === 0) {
             return c.json({ error: 'User not found.' }, 404);
@@ -89,7 +136,7 @@ app.delete('/users', auth, async (c) => {
         return c.body(null, 204);
     } catch (error) {
         console.error('Deletion error:', error);
-        return c.json({ error: 'Failed to delete user.' }, 500);
+        return c.json({ error: error.message || 'Failed to delete user.' }, 500);
     }
 });
 

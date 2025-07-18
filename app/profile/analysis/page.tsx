@@ -110,7 +110,7 @@ export default function AnalysisPage() {
             </h1>
             <div className="w-full md:w-auto flex justify-center md:justify-end">
               <Button asChild variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
-                <Link href="/home">ホームページへ</Link>
+                <Link href="/home">ホームへ</Link>
               </Button>
             </div>
           </div>

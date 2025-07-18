@@ -1,5 +1,5 @@
 import { verify } from 'hono/jwt'
-import { db } from '../db.js';
+import { findAuthToken, updateLastUsed } from '../models/auth_tokens.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -21,26 +21,24 @@ const auth = async (c, next) => {
     }
 
     try {
+        const storedToken = await findAuthToken(token);
+        if (!storedToken) {
+            return c.json({ error: 'Invalid token or session expired.' }, 401);
+        }
+
         const decoded = await verify(token, JWT_SECRET, 'HS256');
         if (!decoded || !decoded.id) {
             return c.json({ error: 'Invalid token.' }, 401);
         }
 
-        const user = await new Promise((resolve, reject) => {
-            db.get('SELECT * FROM users WHERE user_id = ?', [decoded.id], (dbErr, user) => {
-                if (dbErr) {
-                    console.error('Database error during token verification:', dbErr);
-                    return reject(new Error('Database error occurred.'));
-                }
-                resolve(user);
-            });
-        });
-
-        if (!user) {
-            return c.json({ error: 'Invalid token. User does not exist.' }, 401);
+        if (new Date(storedToken.expires_at) < new Date()) {
+            return c.json({ error: 'Token has expired.' }, 401);
         }
 
+        await updateLastUsed(token);
+
         c.set('userId', decoded.id);
+        c.set('token', token);
         await next();
     } catch (err) {
         if (err.name === 'JwtTokenExpired') {
@@ -53,6 +51,5 @@ const auth = async (c, next) => {
         return c.json({ error: 'Failed to authenticate token.' }, 500);
     }
 };
-
 
 export default auth;

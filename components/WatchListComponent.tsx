@@ -24,12 +24,7 @@ const sortMappings: Record<string, { sortBy: string; sortOrder: string }> = {
     'Rating': { sortBy: 'RATING', sortOrder: 'ASC' }
 };
 
-interface WatchListComponentProps {
-    onUpdateAll?: () => void;
-    isUpdating?: boolean;
-}
-
-export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListComponentProps) {
+export function WatchListComponent() {
     const [contentsList, setContentsList] = useState<Contents[]>([]);
     const [activeTab, setActiveTab] = useState<ContentsStatus | 'All'>('All');
     const [activeRating, setActiveRating] = useState<ContentsRating | 'All' | null>('All');
@@ -311,8 +306,6 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
                     onAdd={() => setIsAddDialogOpen(true)}
                     onLogout={handleLogout}
                     onOpenFilter={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                    onUpdateAll={onUpdateAll}
-                    isUpdating={isUpdating}
                 />
 
                 {isFilterMenuOpen && (
@@ -374,33 +367,7 @@ export function WatchListComponent({ onUpdateAll, isUpdating }: WatchListCompone
                 }}
             />
 
-            <Dialog open={isDeleteAccountDialogOpen} onOpenChange={setIsDeleteAccountDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>アカウント削除の確認</DialogTitle>
-                        <DialogDescription>
-                            本当にアカウントを削除しますか？この操作は取り消せません。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDeleteAccountDialogOpen(false)}>
-                            キャンセル
-                        </Button>
-                        <Button variant="destructive" onClick={async () => {
-                            try {
-                                await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
-                                    headers: { Authorization: token }
-                                });
-                                handleLogout();
-                            } catch (error) {
-                                console.error('アカウント削除時のエラー', error);
-                            }
-                        }}>
-                            削除する
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            
         </div>
     );
 }

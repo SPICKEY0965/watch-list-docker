@@ -22,6 +22,7 @@ import watchlistsRoutes from './routes/watch_lists.js';
 import usersRoutes from './routes/users.js';
 import batchRoutes from './routes/batch.js';
 import embeddingRoutes from './routes/embedding.js';
+import authRoutes from './routes/auth.js';
 import { seedTags } from './models/preferenceAnalysis.js';
 
 const app = new Hono();
@@ -32,7 +33,7 @@ app.use('*', cors());
 app.use('*', logger((str) => fs.appendFileSync(path.join(__dirname, 'access.log'), str)));
 app.use('*', logger());
 app.use(useSession({
-  secret: process.env.SESSION_SECRET || 'a-secure-secret-for-development-only',
+    secret: process.env.SESSION_SECRET || 'a-secure-secret-for-development-only',
 }));
 
 // Error logging middleware
@@ -83,6 +84,7 @@ const startServer = async () => {
         app.route('/api', usersRoutes);
         app.route('/api', batchRoutes);
         app.route('/api', embeddingRoutes);
+        app.route('/api', authRoutes);
 
         // 4. サーバーを起動
         serve({

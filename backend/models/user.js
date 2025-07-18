@@ -181,4 +181,25 @@ export {
     getUserList,
     getUserDetails,
     searchUsers,
+    verifyPassword,
 };
+
+/**
+ * パスワードを検証
+ * @param {string} userId - ユーザーID
+ * @param {string} password - 平文のパスワード
+ * @returns {Promise<boolean>} - 検証結果
+ */
+async function verifyPassword(userId, password) {
+    try {
+        const user = await getQuery('SELECT password FROM users WHERE user_id = ?', [userId]);
+        if (!user) {
+            return false;
+        }
+        const match = await bcrypt.compare(password, user.password);
+        return match;
+    } catch (error) {
+        console.error('Error verifying password:', error);
+        throw { status: 500, message: 'Error verifying password.' };
+    }
+}

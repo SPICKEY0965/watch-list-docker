@@ -3,9 +3,9 @@ import { useRouter } from 'next/navigation';
 import { useState, useCallback, useEffect } from 'react';
 
 interface User {
-  id: number;
-  iat: number;
-  exp: number;
+    id: number;
+    iat: number;
+    exp: number;
 }
 
 export function useAuth() {
