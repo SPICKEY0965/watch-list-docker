@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -8,13 +9,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import type { Contents, ContentsStatus } from "@/components/types"
+import type { Contents, ContentsStatus, SimilarContent } from "@/components/types"
 import { getAiringStatus } from "@/components/utils"
 import { Edit, Info, MoreVertical, Play, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { convertToUniversalLink } from '@/components/convert_universalURL';
+import { convertToUniversalLink } from '@/components/convert_universalURL'
+import { useApiClient } from "@/hooks/useApiClient"
+import { useAuth } from "@/hooks/useAuth"
 
 //
 // コンテンツカード（個別の表示部分）
@@ -27,6 +31,24 @@ interface ContentsCardProps {
 }
 
 export default function ContentsCard({ contents, onEdit, onDelete, onStatusChange }: ContentsCardProps) {
+    const [similarContents, setSimilarContents] = useState<SimilarContent[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const { token, handleLogout } = useAuth()
+    const apiClient = useApiClient(token, handleLogout)
+
+    const fetchSimilarContents = async (contentId: number) => {
+        if (similarContents.length > 0) return // 既に取得済みの場合は何もしない
+        setIsLoading(true)
+        try {
+            const response = await apiClient.get(`/api/contents/${contentId}/similar`)
+            setSimilarContents(response.data)
+        } catch (error) {
+            console.error("Failed to fetch similar contents:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     // ステータスに基づいて色を決定
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -87,7 +109,11 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
 
                 {/* アクションボタン - 右上 */}
                 <div className="absolute top-2 right-2 z-20 flex gap-1.5">
-                    <Popover>
+                    <Popover onOpenChange={(open) => {
+                        if (open) {
+                            fetchSimilarContents(contents.content_id)
+                        }
+                    }}>
                         <PopoverTrigger asChild>
                             <Button
                                 variant="secondary"
@@ -119,7 +145,9 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                                     </div>
                                     <div>
                                         <p className="text-muted-foreground">更新日</p>
-                                        <p className="font-medium">{contents.updateDay}</p>
+                                        <p className="font-medium">
+                                            {contents.last_update_date ? contents.last_update_date : "N/A"}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-muted-foreground">ステータス</p>
@@ -178,6 +206,31 @@ export default function ContentsCard({ contents, onEdit, onDelete, onStatusChang
                                         視聴する
                                     </a>
                                 </Button>
+
+                                {isLoading && <p className="text-sm text-center">類似作品を検索中...</p>}
+                                {similarContents.length > 0 && (
+                                    <Accordion type="single" collapsible className="w-full">
+                                        <AccordionItem value="similar-contents">
+                                            <AccordionTrigger>
+                                                <h4 className="font-semibold text-sm">類似の作品</h4>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {similarContents.map((item) => (
+                                                        <div key={item.content_id} className="text-center">
+                                                            <img
+                                                                src={item.image}
+                                                                alt={item.title}
+                                                                className="w-full h-20 object-cover rounded-md"
+                                                            />
+                                                            <p className="text-xs mt-1 truncate">{item.title}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                )}
                             </div>
                         </PopoverContent>
                     </Popover>

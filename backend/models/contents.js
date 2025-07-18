@@ -27,7 +27,7 @@ function cosineSimilarity(vecA, vecB) {
 function getContents({ limit, offset, sortBy, sortOrder, airing_status, content_type }) {
     return new Promise((resolve, reject) => {
         let query = `
-            SELECT content_id, title, episodes, image, streaming_url, content_type, season, cour, airing_status, broadcastDate, is_private
+            SELECT content_id, title, episodes, image, streaming_url, content_type, season, cour, airing_status, broadcastDate, is_private, description
             FROM contents
             WHERE is_private = FALSE
         `;

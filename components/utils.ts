@@ -28,8 +28,14 @@ export function calculateNextBroadcastDate(contents: Contents): Date {
 
     // 曜日インデックス（0=日曜…6=土曜）
     const currentDow = now.getDay();
-    const targetDow = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        .indexOf(contents.updateDay);
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    let targetDow: number;
+    if (contents.updateDay && weekdays.includes(contents.updateDay)) {
+        targetDow = weekdays.indexOf(contents.updateDay);
+    } else {
+        targetDow = startDate.getDay();
+    }
 
     let next = new Date(now);
     if (targetDow > currentDow) {

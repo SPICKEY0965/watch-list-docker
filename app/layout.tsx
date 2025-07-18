@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
+import StagewiseClientToolbar from "@/components/StagewiseClientToolbar";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -39,6 +40,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <StagewiseClientToolbar />
       </body>
     </html>
   );

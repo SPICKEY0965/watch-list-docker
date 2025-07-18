@@ -10,7 +10,8 @@ export interface Contents {
     image: string;
     rating: ContentsRating;
     broadcastDate: string;
-    updateDay: string;
+    updated_at: string;
+    last_update_date: string;
     streaming_url: string;
     content_type: string;
     season: number;
@@ -18,6 +19,7 @@ export interface Contents {
     status: ContentsStatus;
     is_private: PrivateStatus;
     description?: string;
+    updateDay?: string;
 }
 
 export interface SimilarContent {

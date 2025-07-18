@@ -148,7 +148,7 @@ app.put('/watchlists/:id', auth, editHistoryMiddleware('update', 'watch_list'), 
     try {
         const id = c.req.param('id');
         const userId = c.get('userId');
-        const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating } = await c.req.json();
+        const { title, episodes, image, streaming_url, content_type, season, cour, airing_status, is_private, broadcastDate, status, rating, description } = await c.req.json();
 
         if (!title || title.trim() === '') {
             return c.json({ error: 'Title is required.' }, 400);
@@ -174,6 +174,7 @@ app.put('/watchlists/:id', auth, editHistoryMiddleware('update', 'watch_list'), 
             airing_status,
             is_private,
             broadcastDate,
+            description,
         }, userId);
         await updateWatchlist(userId, id, { status, rating });
         

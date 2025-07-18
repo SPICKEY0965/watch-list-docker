@@ -39,7 +39,8 @@ async function getWatchlist(userId, limit, offset, sortBy, sortOrder, airing_sta
                 WHEN date(c.broadcastDate, '+' || ((c.episodes - 1) * 7) || ' days') < date('now') THEN date(c.broadcastDate, '+' || ((c.episodes - 1) * 7) || ' days')
                 ELSE date(c.broadcastDate, '+' || ((cast((julianday('now') - julianday(c.broadcastDate)) / 7 as integer)) * 7) || ' days')
             END AS last_update_date,
-            c.is_private
+            c.is_private,
+            c.description
         FROM watch_lists w
         INNER JOIN contents c ON w.content_id = c.content_id
         WHERE w.user_id = ?
