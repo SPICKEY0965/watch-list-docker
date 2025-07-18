@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { useSession } from '@hono/session';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -30,6 +31,9 @@ const PORT = 5000;
 app.use('*', cors());
 app.use('*', logger((str) => fs.appendFileSync(path.join(__dirname, 'access.log'), str)));
 app.use('*', logger());
+app.use(useSession({
+  secret: process.env.SESSION_SECRET || 'a-secure-secret-for-development-only',
+}));
 
 // Error logging middleware
 app.onError((err, c) => {

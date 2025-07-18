@@ -27,24 +27,40 @@ function runAsync(query, params) {
   });
 }
 
-export async function runBatchUpdate() {
-  console.log('Starting batch update of content descriptions and embeddings...');
+export async function runBatchUpdate(userId, batchJobs) {
+  console.log(`Starting batch update for user ${userId}...`);
   let updatedCount = 0;
   let failedCount = 0;
+  let processedCount = 0;
+  
+  const updateJobStatus = (status, progress, total, message) => {
+    const job = batchJobs.get(userId);
+    if (job) {
+      job.status = status;
+      job.progress = progress;
+      job.total = total;
+      job.message = message;
+    }
+  };
 
   try {
     const rows = await allAsync('SELECT content_id, title, streaming_url FROM contents', []);
+    const total = rows.length;
 
-    if (rows.length === 0) {
+    updateJobStatus('running', 0, total, `Found ${total} contents to update.`);
+
+    if (total === 0) {
       console.log('No content to update.');
-      return { success: true, message: 'No content to update.', updated: 0, failed: 0 };
+      updateJobStatus('completed', 0, 0, 'No content to update.');
+      return;
     }
 
-    console.log(`Found ${rows.length} contents to update.`);
+    console.log(`Found ${total} contents to update for user ${userId}.`);
 
     for (const row of rows) {
+      processedCount++;
       try {
-        console.log(`Processing content ID: ${row.content_id} (${row.title})`);
+        console.log(`Processing content ID: ${row.content_id} (${row.title}) for user ${userId}`);
 
         if (!row.streaming_url) {
           console.warn(`  -> Skipping, no streaming_url.`);
@@ -68,16 +84,20 @@ export async function runBatchUpdate() {
       } catch (e) {
         console.error(`  -> Failed to process content ${row.title}:`, e.message);
         failedCount++;
+      } finally {
+        // Update progress in the global map
+        updateJobStatus('running', processedCount, total, `Processing ${processedCount} of ${total}...`);
       }
     }
 
     const message = `Batch update complete. Updated: ${updatedCount}, Failed: ${failedCount}.`;
     console.log(message);
-    return { success: true, message, updated: updatedCount, failed: failedCount };
+    updateJobStatus('completed', total, total, message);
 
   } catch (error) {
-    console.error('An unexpected error occurred during batch update:', error);
-    return { success: false, message: 'An unexpected error occurred during batch update.', updated: updatedCount, failed: failedCount };
+    console.error(`An unexpected error occurred during batch update for user ${userId}:`, error);
+    const message = 'An unexpected error occurred during batch update.';
+    updateJobStatus('failed', processedCount, 0, message);
   }
   // DB接続はサーバー全体で管理されているため、ここでは閉じない
 }
