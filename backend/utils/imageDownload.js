@@ -92,9 +92,14 @@ function getSourceDirectory(urlString) {
  * @returns {Object} ダウンロード情報（ファイルパスなど）
  */
 async function downloadImage(imageUrl, options = {}) {
-    const { useOriginalName = true } = options;
+    const { useOriginalName = true, timeout = 10000 } = options; // デフォルトタイムアウトを10秒に設定
 
-    const whiteList = getWhiteList();
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    const whiteList = process.env.WHITE_LIST
+        ? process.env.WHITE_LIST.split(',').map(d => d.trim()).filter(d => d)
+        : [];
     const safeUrl = await sanitizeUrl(imageUrl);
     const url = new URL(safeUrl);
 
@@ -102,7 +107,18 @@ async function downloadImage(imageUrl, options = {}) {
         throw new Error(`URL is not in the whitelist: ${safeUrl}`);
     }
 
-    const response = await fetch(safeUrl);
+    let response;
+    try {
+        response = await fetch(safeUrl, { signal: controller.signal });
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error(`Image download timed out after ${timeout}ms for URL: ${safeUrl}`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(id);
+    }
+
     if (!response.ok) {
         throw new Error(`Failed to fetch image from URL: ${safeUrl} with status ${response.status}`);
     }
@@ -196,26 +212,16 @@ async function sanitizeUrl(urlStr) {
     }
 }
 
-function getInternalDomains() {
-    return process.env.INTERNAL_DOMAINS
-        ? process.env.INTERNAL_DOMAINS.split(',').map(d => d.trim()).filter(d => d)
-        : [];
-}
-
-function getWhiteList() {
-    const list = process.env.WHITE_LIST
-        ? process.env.WHITE_LIST.split(',').map(d => d.trim()).filter(d => d)
-        : [];
-    return list;
-}
-
 // 画像URLが外部かどうか判定する
-function isExternalImage(imageUrl) {
+// hostHeader: 現在のリクエストのHostヘッダーの値
+function isExternalImage(imageUrl, hostHeader) {
     try {
         const parsedImageUrl = new URL(imageUrl);
-        const internalDomains = getInternalDomains();
-        return !internalDomains.includes(parsedImageUrl.hostname);
+        // 画像のホスト名とリクエストのホスト名を比較
+        return parsedImageUrl.hostname !== hostHeader.split(':')[0]; // ポート番号を除外して比較
     } catch (e) {
+        // URLが無効な場合や、相対パスの場合は外部とみなさない
+        // 相対パスの場合、URLオブジェクトの生成に失敗し、catchブロックに入る
         return false;
     }
 }
@@ -263,7 +269,5 @@ export {
     downloadImage,
     sanitizeUrl,
     isExternalImage,
-    getInternalDomains,
-    getWhiteList,
     findImageByHash,
 };

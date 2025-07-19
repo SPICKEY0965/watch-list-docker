@@ -88,9 +88,12 @@ app.post('/watchlists', auth, async (c) => {
     const userId = c.get('userId');
 
     let filename = null;
-    if (image && isExternalImage) {
+    const host = c.req.header('host');
+    if (image && isExternalImage(image, host)) {
         const result = await downloadImage(image);
         filename = result.relativePhysicalPath;
+    } else if (image && !isExternalImage(image, host)) {
+        filename = image;
     }
 
     return new Promise((resolve, reject) => {
@@ -158,9 +161,12 @@ app.put('/watchlists/:id', auth, editHistoryMiddleware('update', 'watch_list'), 
         }
 
         let filename = null;
-        if (image && isExternalImage) {
+        const host = c.req.header('host');
+        if (image && isExternalImage(image, host)) {
             const result = await downloadImage(image);
             if (result) filename = result.relativePhysicalPath;;
+        } else if (image && !isExternalImage(image, host)) {
+            filename = image;
         }
 
         await updateContent(id, {
